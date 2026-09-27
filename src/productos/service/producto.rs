@@ -6,7 +6,7 @@ use crate::{
     productos::{
         model::{
             AprobarDevolucionRequest, CrearDevolucionRequest, Devolucion, ExistenciaInventario,
-            FiltroExistencias, HistorialDevolucionQuery, ItemDevolucion, ItemVenta, Libro,
+            FiltroExistencias, HistorialDevolucionQuery, ItemDevolucion, Libro,
             RegistrarLibroRequest, RegistrarRevistaRequest, RegistrarVentaRequest,
             ResumenMovimientoDiario, Revista, TipoMovimiento, TipoProducto, TrasladoRequest,
             TrasladoResponse, VentaResponse,
@@ -63,8 +63,12 @@ impl ProductoService {
         if req.cantidad <= 0 {
             return Err(AppError::BadRequest("La cantidad debe ser mayor a 0".to_string()));
         }
+        if req.precio < 0.0 {
+            return Err(AppError::BadRequest("El precio no puede ser negativo".to_string()));
+        }
 
         let ubicacion = req.id_ubicacion.unwrap_or(UBICACION_BODEGA);
+        let revista = ProductoRepo::guardar_o_actualizar_revista(pool, &req, ubicacion).await?;
 
         let _ = log_bitacora(
             pool,
@@ -74,18 +78,7 @@ impl ProductoService {
         )
         .await;
 
-        Ok(Revista {
-            codigo_ean: req.codigo_ean,
-            id_mueble: req.id_mueble,
-            id_proveedor: req.id_proveedor,
-            id_ubicacion: ubicacion,
-            nombre_revista: req.nombre_revista,
-            numero_edicion: req.numero_edicion,
-            periodicidad: req.periodicidad,
-            precio: req.precio,
-            cantidad: req.cantidad,
-            sku: req.sku,
-        })
+        Ok(revista)
     }
 
     pub async fn traslado_bodega_a_tienda_libros(
@@ -106,6 +99,8 @@ impl ProductoService {
             req.cantidad,
             UBICACION_BODEGA,
             UBICACION_TIENDA,
+            actor_id,
+            req.observaciones.as_deref(),
         )
         .await?;
 
@@ -140,11 +135,22 @@ impl ProductoService {
             return Err(AppError::BadRequest("La cantidad a trasladar debe ser mayor a 0".to_string()));
         }
 
+        let (restante_bodega, nuevo_tienda) = ProductoRepo::trasladar_stock_revista(
+            pool,
+            req.codigo_ean,
+            req.cantidad,
+            UBICACION_BODEGA,
+            UBICACION_TIENDA,
+            actor_id,
+            req.observaciones.as_deref(),
+        )
+        .await?;
+
         let _ = log_bitacora(
             pool,
             actor_id,
             "TRASLADO BODEGA A TIENDA (REVISTAS)",
-            &format!("EAN: {}, Cantidad trasladada: {}", req.codigo_ean, req.cantidad),
+            &format!("EAN: {}, Cantidad trasladada: {}. Bodega restan: {}, Tienda: {}", req.codigo_ean, req.cantidad, restante_bodega, nuevo_tienda),
         )
         .await;
 
@@ -153,8 +159,8 @@ impl ProductoService {
             tipo_producto: TipoProducto::Revista,
             tipo_movimiento: TipoMovimiento::BodegaATienda,
             cantidad_trasladada: req.cantidad,
-            stock_origen_restante: 0,
-            stock_destino_nuevo: req.cantidad,
+            stock_origen_restante: restante_bodega,
+            stock_destino_nuevo: nuevo_tienda,
             mensaje: "Traslado de revistas de bodega a tienda completado exitosamente".to_string(),
         })
     }
@@ -172,52 +178,17 @@ impl ProductoService {
             return Err(AppError::BadRequest("El carrito de venta no puede estar vacío".to_string()));
         }
 
-        let mut total_venta = 0.0;
-        let mut total_articulos = 0;
-        let mut items_procesados = Vec::new();
-
-        for item in &req.items {
-            if item.cantidad <= 0 {
-                return Err(AppError::BadRequest("La cantidad de venta debe ser mayor a 0".to_string()));
-            }
-
-            let (nombre, precio) = ProductoRepo::descontar_stock_venta(pool, item.codigo_ean, item.cantidad).await?;
-            let subtotal = precio * (item.cantidad as f64);
-            total_venta += subtotal;
-            total_articulos += item.cantidad;
-
-            items_procesados.push(ItemVenta {
-                codigo_ean: item.codigo_ean,
-                tipo_producto: item.tipo_producto,
-                nombre_producto: nombre,
-                cantidad: item.cantidad,
-                precio_unitario: precio,
-                subtotal,
-            });
-        }
-
-        let venta_id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(1);
+        let venta = ProductoRepo::registrar_venta_transaccional(pool, actor_id, &req).await?;
 
         let _ = log_bitacora(
             pool,
             actor_id,
             "BAJA POR VENTA",
-            &format!("Venta #{} completada. Piezas: {}, Total: ${:.2}", venta_id, total_articulos, total_venta),
+            &format!("Venta #{} completada. Piezas: {}, Total: ${:.2}", venta.id_venta, venta.total_articulos, venta.total),
         )
         .await;
 
-        Ok(VentaResponse {
-            id_venta: venta_id,
-            id_vendedor: actor_id,
-            fecha_hora: "Hoy".to_string(),
-            total: total_venta,
-            total_articulos,
-            items: items_procesados,
-            mensaje: "Venta registrada exitosamente".to_string(),
-        })
+        Ok(venta)
     }
 
     pub async fn consultar_existencias(
@@ -245,6 +216,8 @@ impl ProductoService {
             req.cantidad,
             UBICACION_TIENDA,
             UBICACION_BODEGA,
+            actor_id,
+            req.observaciones.as_deref(),
         )
         .await?;
 
@@ -279,11 +252,22 @@ impl ProductoService {
             return Err(AppError::BadRequest("La cantidad a trasladar debe ser mayor a 0".to_string()));
         }
 
+        let (restante_tienda, nuevo_bodega) = ProductoRepo::trasladar_stock_revista(
+            pool,
+            req.codigo_ean,
+            req.cantidad,
+            UBICACION_TIENDA,
+            UBICACION_BODEGA,
+            actor_id,
+            req.observaciones.as_deref(),
+        )
+        .await?;
+
         let _ = log_bitacora(
             pool,
             actor_id,
             "TRASLADO TIENDA A BODEGA (REVISTAS)",
-            &format!("EAN: {}, Cantidad trasladada: {}", req.codigo_ean, req.cantidad),
+            &format!("EAN: {}, Cantidad trasladada: {}. Tienda restan: {}, Bodega: {}", req.codigo_ean, req.cantidad, restante_tienda, nuevo_bodega),
         )
         .await;
 
@@ -292,8 +276,8 @@ impl ProductoService {
             tipo_producto: TipoProducto::Revista,
             tipo_movimiento: TipoMovimiento::TiendaABodega,
             cantidad_trasladada: req.cantidad,
-            stock_origen_restante: 0,
-            stock_destino_nuevo: req.cantidad,
+            stock_origen_restante: restante_tienda,
+            stock_destino_nuevo: nuevo_bodega,
             mensaje: "Traslado de revistas de tienda a bodega completado exitosamente".to_string(),
         })
     }

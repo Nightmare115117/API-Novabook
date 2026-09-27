@@ -29,12 +29,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: config.clone(),
     };
 
+    let cors = tower_http::cors::CorsLayer::new()
+        .allow_origin(tower_http::cors::Any)
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any);
+
     // Ensamblaje modular de routers según la arquitectura del proyecto:
     // - usuarios/controller: /api/auth/login, /api/auth/perfil, /api/usuarios (CRUD)
     // - productos/controller: /api/bodega/*, /api/vendedor/*, /api/jefe/*
     let app = Router::new()
         .merge(usuarios::controller::router(state.clone()))
         .merge(productos::controller::router(state.clone()))
+        .layer(cors)
         .with_state(state);
 
     let addr = SocketAddr::new(
