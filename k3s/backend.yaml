@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-novabook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-novabook
+
+  template:
+    metadata:
+      labels:
+        app: api-novabook
+    spec:
+      containers:
+        - name: mi-api
+          image: ghcr.io/nightmare115117/api-novabook:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: novabook-secrets
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-novabook
+spec:
+  selector:
+    app: api-novabook
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30082

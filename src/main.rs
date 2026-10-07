@@ -12,7 +12,7 @@ use tokio::net::TcpListener;
 
 use crate::{
     config::Config,
-    db::{create_pool, AppState},
+    db::{AppState, create_pool},
 };
 
 #[tokio::main]
@@ -22,7 +22,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Inicializar pool de base de datos MySQL con SQLx
     let pool = create_pool(&config.database_url).await?;
-    println!("Conexión a MySQL establecida exitosamente en: {}", config.database_url);
+    println!(
+        "Conexión a MySQL establecida exitosamente en: {}",
+        config.database_url
+    );
 
     let state = AppState {
         pool,

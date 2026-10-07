@@ -1,7 +1,4 @@
-use axum::{
-    extract::State,
-    Extension, Json,
-};
+use axum::{Extension, Json, extract::State};
 
 use crate::{
     db::AppState,
@@ -17,7 +14,10 @@ pub async fn login_handler(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<ApiResponse<LoginResponse>>, AppError> {
     let res = UsuarioService::login(&state.pool, &state.config, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Inicio de sesión exitoso")))
+    Ok(Json(ApiResponse::success_msg(
+        res,
+        "Inicio de sesión exitoso",
+    )))
 }
 
 pub async fn perfil_handler(

@@ -1,15 +1,13 @@
 use axum::{
-    extract::{Path, State},
     Extension, Json,
+    extract::{Path, State},
 };
 
 use crate::{
     db::AppState,
     error::{ApiResponse, AppError, MessageResponse},
     usuarios::{
-        model::{
-            ActualizarUsuarioRequest, Claims, CrearUsuarioRequest, UsuarioDto,
-        },
+        model::{ActualizarUsuarioRequest, Claims, CrearUsuarioRequest, UsuarioDto},
         service::UsuarioService,
     },
 };
@@ -37,7 +35,10 @@ pub async fn crear_usuario_handler(
     Json(payload): Json<CrearUsuarioRequest>,
 ) -> Result<Json<ApiResponse<UsuarioDto>>, AppError> {
     let res = UsuarioService::crear_usuario(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Usuario creado exitosamente")))
+    Ok(Json(ApiResponse::success_msg(
+        res,
+        "Usuario creado exitosamente",
+    )))
 }
 
 pub async fn actualizar_usuario_handler(
@@ -46,8 +47,12 @@ pub async fn actualizar_usuario_handler(
     Path(id): Path<i64>,
     Json(payload): Json<ActualizarUsuarioRequest>,
 ) -> Result<Json<ApiResponse<UsuarioDto>>, AppError> {
-    let res = UsuarioService::actualizar_usuario(&state.pool, claims.id_usuario, id, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Usuario actualizado exitosamente")))
+    let res =
+        UsuarioService::actualizar_usuario(&state.pool, claims.id_usuario, id, payload).await?;
+    Ok(Json(ApiResponse::success_msg(
+        res,
+        "Usuario actualizado exitosamente",
+    )))
 }
 
 pub async fn eliminar_usuario_handler(
@@ -56,5 +61,8 @@ pub async fn eliminar_usuario_handler(
     Path(id): Path<i64>,
 ) -> Result<Json<MessageResponse>, AppError> {
     UsuarioService::eliminar_usuario(&state.pool, claims.id_usuario, id).await?;
-    Ok(Json(MessageResponse::new(format!("Usuario con ID {} eliminado exitosamente", id))))
+    Ok(Json(MessageResponse::new(format!(
+        "Usuario con ID {} eliminado exitosamente",
+        id
+    ))))
 }

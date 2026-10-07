@@ -4,7 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
@@ -86,10 +86,9 @@ pub async fn auth_middleware(
 
 /// Helper para validar si los Claims contienen uno de los roles permitidos
 fn validate_role(req: &Request, allowed: &[RolEnum]) -> Result<(), AppError> {
-    let claims = req
-        .extensions()
-        .get::<Claims>()
-        .ok_or_else(|| AppError::Unauthorized("No se encontraron claims de autenticación".to_string()))?;
+    let claims = req.extensions().get::<Claims>().ok_or_else(|| {
+        AppError::Unauthorized("No se encontraron claims de autenticación".to_string())
+    })?;
 
     if allowed.contains(&claims.rol) {
         Ok(())
@@ -104,37 +103,38 @@ fn validate_role(req: &Request, allowed: &[RolEnum]) -> Result<(), AppError> {
 }
 
 /// Middleware de autorización: Permite a Gerente y Jefe de Departamento (hereda de Gerente)
-pub async fn require_gerente_o_jefe(
-    req: Request,
-    next: Next,
-) -> Result<Response, AppError> {
+pub async fn require_gerente_o_jefe(req: Request, next: Next) -> Result<Response, AppError> {
     validate_role(&req, &[RolEnum::Gerente, RolEnum::JefeDepartamento])?;
     Ok(next.run(req).await)
 }
 
+/// Middleware de autorización: Permite a Bodega, Jefe y Gerente
+pub async fn require_bodega_o_gerente(req: Request, next: Next) -> Result<Response, AppError> {
+    validate_role(
+        &req,
+        &[
+            RolEnum::PersonalBodega,
+            RolEnum::Gerente,
+            RolEnum::JefeDepartamento,
+        ],
+    )?;
+    Ok(next.run(req).await)
+}
+
 /// Middleware de autorización: Exclusivo para Jefe de Departamento
-pub async fn require_jefe(
-    req: Request,
-    next: Next,
-) -> Result<Response, AppError> {
+pub async fn require_jefe(req: Request, next: Next) -> Result<Response, AppError> {
     validate_role(&req, &[RolEnum::JefeDepartamento])?;
     Ok(next.run(req).await)
 }
 
 /// Middleware de autorización: Exclusivo para Personal de Bodega
-pub async fn require_bodega(
-    req: Request,
-    next: Next,
-) -> Result<Response, AppError> {
+pub async fn require_bodega(req: Request, next: Next) -> Result<Response, AppError> {
     validate_role(&req, &[RolEnum::PersonalBodega])?;
     Ok(next.run(req).await)
 }
 
 /// Middleware de autorización: Exclusivo para Vendedor
-pub async fn require_vendedor(
-    req: Request,
-    next: Next,
-) -> Result<Response, AppError> {
+pub async fn require_vendedor(req: Request, next: Next) -> Result<Response, AppError> {
     validate_role(&req, &[RolEnum::Vendedor])?;
     Ok(next.run(req).await)
 }

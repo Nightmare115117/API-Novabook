@@ -1,218 +1,136 @@
+pub mod autor;
+pub mod bitacora;
+pub mod bodega;
+pub mod compra;
+pub mod devolucion;
+pub mod genero;
+pub mod inventario;
+pub mod movimiento;
+pub mod producto;
+pub mod proveedor;
+pub mod venta;
+
+pub use autor::*;
+pub use bitacora::*;
+pub use compra::*;
+pub use devolucion::*;
+pub use genero::*;
+pub use inventario::*;
+pub use movimiento::*;
+pub use producto::*;
+pub use proveedor::*;
+pub use venta::*;
+
 use axum::{
-    body::Body,
-    extract::{Path, Query, State},
-    http::{header, HeaderMap, HeaderValue, StatusCode},
-    middleware,
-    response::{IntoResponse, Response},
-    routing::{get, post, put},
-    Extension, Json, Router,
+    Router, middleware,
+    routing::{delete, get, post, put},
 };
 
 use crate::{
     db::AppState,
-    error::{ApiResponse, AppError},
-    middleware::{auth_middleware, require_bodega, require_jefe, require_vendedor},
-    productos::{
-        model::{
-            AprobarDevolucionRequest, CrearDevolucionRequest, Devolucion, ExistenciaInventario,
-            FechaQuery, FiltroExistencias, HistorialDevolucionQuery, Libro, RegistrarLibroRequest,
-            RegistrarRevistaRequest, RegistrarVentaRequest, ResumenMovimientoDiario, Revista,
-            TipoProducto, TrasladoRequest, TrasladoResponse, VentaResponse,
-        },
-        service::ProductoService,
+    middleware::{
+        auth_middleware, require_bodega, require_bodega_o_gerente, require_jefe, require_vendedor,
     },
-    usuarios::model::Claims,
 };
 
 // ============================================================================
-// Handlers: Personal de Bodega
-// ============================================================================
-
-pub async fn registrar_libro_bodega(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<RegistrarLibroRequest>,
-) -> Result<Json<ApiResponse<Libro>>, AppError> {
-    let res = ProductoService::registrar_libro(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Libro registrado exitosamente en bodega")))
-}
-
-pub async fn registrar_revista_bodega(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<RegistrarRevistaRequest>,
-) -> Result<Json<ApiResponse<Revista>>, AppError> {
-    let res = ProductoService::registrar_revista(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Revista registrada exitosamente en bodega")))
-}
-
-pub async fn movimiento_bodega_tienda_libros(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<TrasladoRequest>,
-) -> Result<Json<ApiResponse<TrasladoResponse>>, AppError> {
-    let res = ProductoService::traslado_bodega_a_tienda_libros(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn movimiento_bodega_tienda_revistas(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<TrasladoRequest>,
-) -> Result<Json<ApiResponse<TrasladoResponse>>, AppError> {
-    let res = ProductoService::traslado_bodega_a_tienda_revistas(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-// ============================================================================
-// Handlers: Vendedor
-// ============================================================================
-
-pub async fn registrar_venta_vendedor(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<RegistrarVentaRequest>,
-) -> Result<Json<ApiResponse<VentaResponse>>, AppError> {
-    let res = ProductoService::registrar_venta(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Venta procesada exitosamente")))
-}
-
-pub async fn consultar_existencias_vendedor(
-    State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
-    Query(params): Query<FiltroExistencias>,
-) -> Result<Json<ApiResponse<Vec<ExistenciaInventario>>>, AppError> {
-    let res = ProductoService::consultar_existencias(&state.pool, params).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn movimiento_tienda_bodega_libros(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<TrasladoRequest>,
-) -> Result<Json<ApiResponse<TrasladoResponse>>, AppError> {
-    let res = ProductoService::traslado_tienda_a_bodega_libros(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn movimiento_tienda_bodega_revistas(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<TrasladoRequest>,
-) -> Result<Json<ApiResponse<TrasladoResponse>>, AppError> {
-    let res = ProductoService::traslado_tienda_a_bodega_revistas(&state.pool, claims.id_usuario, payload).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn crear_devolucion_vendedor(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Json(payload): Json<CrearDevolucionRequest>,
-) -> Result<Json<ApiResponse<Devolucion>>, AppError> {
-    let res = ProductoService::crear_devolucion(&state.pool, claims.id_usuario, &claims.nombre, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Devolución registrada exitosamente (Pendiente de autorización)")))
-}
-
-pub async fn generar_pdf_libros_vendedor(
-    State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
-    Path(id): Path<i64>,
-) -> Result<Response, AppError> {
-    let (pdf_bytes, filename) = ProductoService::generar_pdf_devolucion(&state.pool, id, TipoProducto::Libro).await?;
-
-    let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("application/pdf"));
-    headers.insert(
-        header::CONTENT_DISPOSITION,
-        HeaderValue::from_str(&format!("attachment; filename=\"{}\"", filename))
-            .unwrap_or_else(|_| HeaderValue::from_static("attachment")),
-    );
-
-    Ok((StatusCode::OK, headers, Body::from(pdf_bytes)).into_response())
-}
-
-pub async fn generar_pdf_revistas_vendedor(
-    State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
-    Path(id): Path<i64>,
-) -> Result<Response, AppError> {
-    let (pdf_bytes, filename) = ProductoService::generar_pdf_devolucion(&state.pool, id, TipoProducto::Revista).await?;
-
-    let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("application/pdf"));
-    headers.insert(
-        header::CONTENT_DISPOSITION,
-        HeaderValue::from_str(&format!("attachment; filename=\"{}\"", filename))
-            .unwrap_or_else(|_| HeaderValue::from_static("attachment")),
-    );
-
-    Ok((StatusCode::OK, headers, Body::from(pdf_bytes)).into_response())
-}
-
-// ============================================================================
-// Handlers: Jefe de Departamento
-// ============================================================================
-
-pub async fn consultar_historial_devoluciones_jefe(
-    State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
-    Query(params): Query<HistorialDevolucionQuery>,
-) -> Result<Json<ApiResponse<Vec<Devolucion>>>, AppError> {
-    let res = ProductoService::consultar_historial_devoluciones(&state.pool, params).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn consultar_movimiento_diario_jefe(
-    State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
-    Query(query): Query<FechaQuery>,
-) -> Result<Json<ApiResponse<ResumenMovimientoDiario>>, AppError> {
-    let res = ProductoService::consultar_movimiento_diario(&state.pool, query.fecha).await?;
-    Ok(Json(ApiResponse::success(res)))
-}
-
-pub async fn aprobar_devolucion_jefe(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Path(id): Path<i64>,
-    Json(payload): Json<AprobarDevolucionRequest>,
-) -> Result<Json<ApiResponse<Devolucion>>, AppError> {
-    let res = ProductoService::aprobar_devolucion(&state.pool, claims.id_usuario, &claims.nombre, id, payload).await?;
-    Ok(Json(ApiResponse::success_msg(res, "Devolución evaluada exitosamente")))
-}
-
-// ============================================================================
-// Router Ensamblado para Productos (Bodega, Vendedor, Jefe)
+// Router Ensamblado para Productos, Catálogos, Bodega, Vendedor y Jefe
 // ============================================================================
 
 pub fn router(state: AppState) -> Router<AppState> {
+    // Rutas de Catálogos (Géneros, Autores, Proveedores)
+    let catalogos_routes = Router::new()
+        .route("/generos", get(genero::listar_generos_handler))
+        .route("/autores", get(autor::listar_autores_handler))
+        .route("/autores/{id}", get(autor::obtener_autor_handler))
+        .route(
+            "/autores",
+            post(autor::crear_autor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .route(
+            "/autores/{id}",
+            put(autor::actualizar_autor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .route(
+            "/autores/{id}",
+            delete(autor::eliminar_autor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .route("/proveedores", get(proveedor::listar_proveedores_handler))
+        .route("/proveedores/{id}", get(proveedor::obtener_proveedor_handler))
+        .route(
+            "/proveedores",
+            post(proveedor::crear_proveedor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .route(
+            "/proveedores/{id}",
+            put(proveedor::actualizar_proveedor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .route(
+            "/proveedores/{id}",
+            delete(proveedor::eliminar_proveedor_handler).layer(middleware::from_fn(require_bodega_o_gerente)),
+        )
+        .layer(middleware::from_fn_with_state(
+            state.config.clone(),
+            auth_middleware,
+        ));
+
     let bodega_routes = Router::new()
-        .route("/libros", post(registrar_libro_bodega))
-        .route("/revistas", post(registrar_revista_bodega))
-        .route("/movimientos/libros", post(movimiento_bodega_tienda_libros))
-        .route("/movimientos/revistas", post(movimiento_bodega_tienda_revistas))
+        .route("/libros", post(producto::registrar_libro_bodega))
+        .route("/revistas", post(producto::registrar_revista_bodega))
+        .route("/movimientos/libros", post(movimiento::movimiento_bodega_tienda_libros))
+        .route(
+            "/movimientos/revistas",
+            post(movimiento::movimiento_bodega_tienda_revistas),
+        )
+        .route("/compras", post(compra::registrar_compra_bodega))
+        .route("/compras", get(compra::listar_compras_bodega))
         .layer(middleware::from_fn(require_bodega))
-        .layer(middleware::from_fn_with_state(state.config.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.config.clone(),
+            auth_middleware,
+        ));
 
     let vendedor_routes = Router::new()
-        .route("/ventas", post(registrar_venta_vendedor))
-        .route("/existencias", get(consultar_existencias_vendedor))
-        .route("/movimientos/libros", post(movimiento_tienda_bodega_libros))
-        .route("/movimientos/revistas", post(movimiento_tienda_bodega_revistas))
-        .route("/devoluciones", post(crear_devolucion_vendedor))
-        .route("/devoluciones/{id}/pdf/libros", get(generar_pdf_libros_vendedor))
-        .route("/devoluciones/{id}/pdf/revistas", get(generar_pdf_revistas_vendedor))
+        .route("/ventas", post(venta::registrar_venta_vendedor))
+        .route("/existencias", get(inventario::consultar_existencias_vendedor))
+        .route("/movimientos/libros", post(movimiento::movimiento_tienda_bodega_libros))
+        .route(
+            "/movimientos/revistas",
+            post(movimiento::movimiento_tienda_bodega_revistas),
+        )
+        .route("/devoluciones", post(devolucion::crear_devolucion_vendedor))
+        .route(
+            "/devoluciones/{id}/pdf/libros",
+            get(devolucion::generar_pdf_libros_vendedor),
+        )
+        .route(
+            "/devoluciones/{id}/pdf/revistas",
+            get(devolucion::generar_pdf_revistas_vendedor),
+        )
         .layer(middleware::from_fn(require_vendedor))
-        .layer(middleware::from_fn_with_state(state.config.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.config.clone(),
+            auth_middleware,
+        ));
 
     let jefe_routes = Router::new()
-        .route("/devoluciones/historial", get(consultar_historial_devoluciones_jefe))
-        .route("/movimientos/diarios", get(consultar_movimiento_diario_jefe))
-        .route("/devoluciones/{id}/aprobar", put(aprobar_devolucion_jefe))
+        .route(
+            "/devoluciones/historial",
+            get(devolucion::consultar_historial_devoluciones_jefe),
+        )
+        .route(
+            "/movimientos/diarios",
+            get(bitacora::consultar_movimiento_diario_jefe),
+        )
+        .route("/devoluciones/{id}/aprobar", put(devolucion::aprobar_devolucion_jefe))
         .layer(middleware::from_fn(require_jefe))
-        .layer(middleware::from_fn_with_state(state.config.clone(), auth_middleware));
+        .layer(middleware::from_fn_with_state(
+            state.config.clone(),
+            auth_middleware,
+        ));
 
     Router::new()
+        .nest("/api", catalogos_routes)
         .nest("/api/bodega", bodega_routes)
         .nest("/api/vendedor", vendedor_routes)
         .nest("/api/jefe", jefe_routes)

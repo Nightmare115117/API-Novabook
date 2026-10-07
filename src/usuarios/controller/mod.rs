@@ -1,14 +1,13 @@
 pub mod auth;
 pub mod usuario;
 
-use axum::{
-    middleware,
-    routing::{delete, get, post, put},
-    Router,
-};
 use crate::{
     db::AppState,
     middleware::{auth_middleware, require_gerente_o_jefe},
+};
+use axum::{
+    Router, middleware,
+    routing::{delete, get, post, put},
 };
 
 pub fn router(state: AppState) -> Router<AppState> {

@@ -1,6 +1,6 @@
+use crate::{config::Config, error::AppError};
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use std::time::Duration;
-use crate::{config::Config, error::AppError};
 
 pub type DbPool = MySqlPool;
 
@@ -29,7 +29,7 @@ pub async fn log_bitacora(
     detalle: &str,
 ) -> Result<(), AppError> {
     sqlx::query(
-        "INSERT INTO bitacora (fecha_hora, accion, detalle, id_usuarios) VALUES (NOW(), ?, ?, ?)"
+        "INSERT INTO bitacora (fecha_hora, accion, detalle, id_usuarios) VALUES (NOW(), ?, ?, ?)",
     )
     .bind(accion)
     .bind(detalle)
@@ -41,8 +41,8 @@ pub async fn log_bitacora(
     Ok(())
 }
 
-use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use sqlx::Row;
 
 /// Extrae de forma segura un i64 de una columna de MySQL sin importar si el tipo en BD es DECIMAL, BIGINT, INT o VARCHAR

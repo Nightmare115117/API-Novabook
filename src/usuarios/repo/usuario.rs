@@ -1,9 +1,9 @@
-use sqlx::Row;
 use crate::{
-    db::{row_get_i32, row_get_i64, row_get_opt_i64, DbPool},
+    db::{DbPool, row_get_i32, row_get_i64, row_get_opt_i64},
     error::AppError,
     usuarios::model::{ActualizarUsuarioRequest, CrearUsuarioRequest, Usuario},
 };
+use sqlx::Row;
 
 pub struct UsuarioRepo;
 
@@ -99,10 +99,19 @@ impl UsuarioRepo {
     ) -> Result<Usuario, AppError> {
         let nuevo_rol = req.id_roles.unwrap_or(actual.id_roles);
         let nuevo_nombre = req.nombre.clone().unwrap_or_else(|| actual.nombre.clone());
-        let nuevo_paterno = req.apellido_paterno.clone().or_else(|| actual.apellido_paterno.clone());
-        let nuevo_materno = req.apellido_materno.clone().or_else(|| actual.apellido_materno.clone());
+        let nuevo_paterno = req
+            .apellido_paterno
+            .clone()
+            .or_else(|| actual.apellido_paterno.clone());
+        let nuevo_materno = req
+            .apellido_materno
+            .clone()
+            .or_else(|| actual.apellido_materno.clone());
         let nuevo_tel = req.telefono.or(actual.telefono);
-        let nueva_pass = req.contrasena.clone().unwrap_or_else(|| actual.contrasena.clone());
+        let nueva_pass = req
+            .contrasena
+            .clone()
+            .unwrap_or_else(|| actual.contrasena.clone());
 
         sqlx::query(
             r#"

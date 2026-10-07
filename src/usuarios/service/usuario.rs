@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    db::{log_bitacora, DbPool},
+    db::{DbPool, log_bitacora},
     error::AppError,
     middleware::generate_jwt,
     usuarios::{
@@ -25,7 +25,9 @@ impl UsuarioService {
             return Err(AppError::BadRequest("ID de usuario inválido".to_string()));
         }
         if req.contrasena.trim().is_empty() {
-            return Err(AppError::BadRequest("La contraseña no puede estar vacía".to_string()));
+            return Err(AppError::BadRequest(
+                "La contraseña no puede estar vacía".to_string(),
+            ));
         }
 
         let usuario = UsuarioRepo::buscar_por_id(pool, req.id_usuario)
@@ -43,7 +45,9 @@ impl UsuarioService {
         };
 
         if !pass_valida {
-            return Err(AppError::Unauthorized("Credenciales incorrectas".to_string()));
+            return Err(AppError::Unauthorized(
+                "Credenciales incorrectas".to_string(),
+            ));
         }
 
         let rol_enum = RolEnum::from_id(usuario.id_roles).ok_or_else(|| {
@@ -103,13 +107,18 @@ impl UsuarioService {
         req: CrearUsuarioRequest,
     ) -> Result<UsuarioDto, AppError> {
         if req.id_usuarios <= 0 {
-            return Err(AppError::BadRequest("ID de usuario debe ser mayor a 0".to_string()));
+            return Err(AppError::BadRequest(
+                "ID de usuario debe ser mayor a 0".to_string(),
+            ));
         }
         if req.nombre.trim().is_empty() {
             return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
         }
         if RolEnum::from_id(req.id_roles).is_none() {
-            return Err(AppError::BadRequest(format!("Rol inválido: {}", req.id_roles)));
+            return Err(AppError::BadRequest(format!(
+                "Rol inválido: {}",
+                req.id_roles
+            )));
         }
 
         if UsuarioRepo::existe(pool, req.id_usuarios).await? {
@@ -137,7 +146,9 @@ impl UsuarioService {
 
         let usuario = UsuarioRepo::buscar_por_id(pool, req.id_usuarios)
             .await?
-            .ok_or_else(|| AppError::Internal("Error al recuperar usuario recién creado".to_string()))?;
+            .ok_or_else(|| {
+                AppError::Internal("Error al recuperar usuario recién creado".to_string())
+            })?;
 
         Ok(usuario.into())
     }
@@ -152,21 +163,18 @@ impl UsuarioService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Usuario #{} no encontrado", id)))?;
 
-        if let Some(r) = req.id_roles {
-            if RolEnum::from_id(r).is_none() {
+        if let Some(r) = req.id_roles
+            && RolEnum::from_id(r).is_none() {
                 return Err(AppError::BadRequest(format!("Rol inválido: {}", r)));
             }
-        }
 
         let mut req = req;
-        if let Some(ref pass) = req.contrasena {
-            if !pass.starts_with("$2b$") && !pass.starts_with("$2a$") {
-                req.contrasena = Some(
-                    bcrypt::hash(pass, 10)
-                        .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {}", e)))?,
-                );
+        if let Some(ref pass) = req.contrasena
+            && !pass.starts_with("$2b$") && !pass.starts_with("$2a$") {
+                req.contrasena = Some(bcrypt::hash(pass, 10).map_err(|e| {
+                    AppError::Internal(format!("Error al hashear contraseña: {}", e))
+                })?);
             }
-        }
 
         let actualizado = UsuarioRepo::actualizar(pool, id, &actual, &req).await?;
 
@@ -183,7 +191,9 @@ impl UsuarioService {
 
     pub async fn eliminar_usuario(pool: &DbPool, actor_id: i64, id: i64) -> Result<(), AppError> {
         if id == actor_id {
-            return Err(AppError::BadRequest("No puedes eliminar tu propio usuario".to_string()));
+            return Err(AppError::BadRequest(
+                "No puedes eliminar tu propio usuario".to_string(),
+            ));
         }
 
         let eliminado = UsuarioRepo::eliminar(pool, id).await?;

@@ -12,6 +12,7 @@ pub struct ExistenciaInventario {
     pub precio: f64,
     pub proveedor: Option<String>,
     pub autor_o_editorial: Option<String>,
+    pub generos: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

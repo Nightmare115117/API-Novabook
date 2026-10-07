@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::producto::TipoProducto;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemDevolucion {
@@ -21,6 +21,11 @@ pub struct Devolucion {
     pub vendedor_nombre: Option<String>,
     pub id_proveedor: i32,
     pub nombre_proveedor: Option<String>,
+    pub proveedor_rfc: Option<String>,
+    pub proveedor_telefono: Option<String>,
+    pub proveedor_correo: Option<String>,
+    pub proveedor_direccion: Option<String>,
+    pub proveedor_contacto: Option<String>,
     pub tipo_producto: TipoProducto,
     pub items: Vec<ItemDevolucion>,
 }
