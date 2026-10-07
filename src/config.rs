@@ -27,7 +27,7 @@ impl Config {
         let server_port = env::var("SERVER_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(3000);
+            .unwrap_or(8080);
 
         Self {
             database_url,
