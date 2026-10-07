@@ -3,10 +3,6 @@ FROM ubuntu:24.04 AS build
 RUN apt-get update
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-RUN which rustup && \
-    rustup --version && \
-    which cargo
-
 WORKDIR /app
 COPY . .
 
