@@ -10,8 +10,7 @@ RUN which rustup && \
 WORKDIR /app
 COPY . .
 
-RUN rustup toolchain install stable && \
-    rustup default stable
+RUN rustup toolchain install stable
 
 RUN rm -rf target && cargo build --release
 
