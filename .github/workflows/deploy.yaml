@@ -63,8 +63,8 @@ jobs:
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
               export KUBECONFIG=/home/iron/.kube/config &&
               cd ~/K8s &&
-              kubectl apply -f mariadb-deployment.yml &&
-              kubectl apply -f backend-deployment.yml &&
+              kubectl apply -f database.yml &&
+              kubectl apply -f backend.yml
             "
 
       - name: Reiniciar aplicaciones
@@ -72,7 +72,7 @@ jobs:
           ssh -i ~/.ssh/Dev-Server.pem \
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
               export KUBECONFIG=/home/iron/.kube/config &&
-              kubectl rollout restart deployment/backend &&
+              kubectl rollout restart deployment/backend 
             "
 
       - name: Esperar aplicaciones
@@ -80,5 +80,5 @@ jobs:
           ssh -i ~/.ssh/Dev-Server.pem \
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
               export KUBECONFIG=/home/iron/.kube/config &&
-              kubectl rollout status deployment/backend --timeout=120s &&
+              kubectl rollout status deployment/backend --timeout=120s
             "
