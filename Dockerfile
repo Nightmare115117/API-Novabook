@@ -3,6 +3,10 @@ FROM ubuntu:24.04 AS build
 RUN apt-get update && apt-get install -y \
     rustup
 
+RUN which rustup && \
+    rustup --version && \
+    which cargo
+
 WORKDIR /app
 COPY . .
 
