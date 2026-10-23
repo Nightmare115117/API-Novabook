@@ -25,10 +25,33 @@ impl VentaRepo {
             req.cliente.trim()
         };
 
+        // Asociar con la entidad `clientes` (o auto-registrar cliente si es nuevo)
+        let id_cliente: i32 = if nombre_cli == "Público en General" {
+            1
+        } else {
+            let row_cli = sqlx::query("SELECT id_cliente FROM clientes WHERE LOWER(TRIM(nombre)) = LOWER(?)")
+                .bind(nombre_cli)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(AppError::Database)?;
+
+            if let Some(r) = row_cli {
+                r.get("id_cliente")
+            } else {
+                let res_cli = sqlx::query("INSERT INTO clientes (nombre) VALUES (?)")
+                    .bind(nombre_cli)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(AppError::Database)?;
+                res_cli.last_insert_id() as i32
+            }
+        };
+
         let insert_res = sqlx::query(
-            "INSERT INTO ventas (id_usuarios, nombre_cliente, fecha_hora, total) VALUES (?, ?, NOW(), 0.0)"
+            "INSERT INTO ventas (id_usuarios, id_cliente, nombre_cliente, fecha_hora, total) VALUES (?, ?, ?, NOW(), 0.0)"
         )
         .bind(actor_id)
+        .bind(id_cliente)
         .bind(nombre_cli)
         .execute(&mut *tx)
         .await

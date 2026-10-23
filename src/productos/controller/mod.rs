@@ -5,7 +5,9 @@ pub mod compra;
 pub mod devolucion;
 pub mod genero;
 pub mod inventario;
+pub mod motivo;
 pub mod movimiento;
+pub mod mueble;
 pub mod producto;
 pub mod proveedor;
 pub mod venta;
@@ -16,7 +18,9 @@ pub use compra::*;
 pub use devolucion::*;
 pub use genero::*;
 pub use inventario::*;
+pub use motivo::*;
 pub use movimiento::*;
+pub use mueble::*;
 pub use producto::*;
 pub use proveedor::*;
 pub use venta::*;
@@ -38,9 +42,42 @@ use crate::{
 // ============================================================================
 
 pub fn router(state: AppState) -> Router<AppState> {
-    // Rutas de Catálogos (Géneros, Autores, Proveedores)
+    // Rutas de Catálogos (Géneros, Motivos, Muebles, Autores, Proveedores)
+    let escritura = middleware::from_fn(require_bodega_o_gerente);
     let catalogos_routes = Router::new()
-        .route("/generos", get(genero::listar_generos_handler))
+        .route(
+            "/generos",
+            get(genero::listar_generos_handler)
+                .merge(post(genero::crear_genero_handler).layer(escritura.clone())),
+        )
+        .route(
+            "/generos/{id}",
+            put(genero::actualizar_genero_handler)
+                .delete(genero::eliminar_genero_handler)
+                .layer(escritura.clone()),
+        )
+        .route(
+            "/motivos",
+            get(motivo::listar_motivos_handler)
+                .merge(post(motivo::crear_motivo_handler).layer(escritura.clone())),
+        )
+        .route(
+            "/motivos/{id}",
+            put(motivo::actualizar_motivo_handler)
+                .delete(motivo::eliminar_motivo_handler)
+                .layer(escritura.clone()),
+        )
+        .route(
+            "/muebles",
+            get(mueble::listar_muebles_handler)
+                .merge(post(mueble::crear_mueble_handler).layer(escritura.clone())),
+        )
+        .route(
+            "/muebles/{id}",
+            put(mueble::actualizar_mueble_handler)
+                .delete(mueble::eliminar_mueble_handler)
+                .layer(escritura),
+        )
         .route("/autores", get(autor::listar_autores_handler))
         .route("/autores/{id}", get(autor::obtener_autor_handler))
         .route(
