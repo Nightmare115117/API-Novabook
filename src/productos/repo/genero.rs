@@ -1,9 +1,9 @@
 use sqlx::Row;
 
 use crate::{
-    db::{DbPool, row_get_i32},
+    db::{DbPool, row_get_i32, row_get_i64},
     error::AppError,
-    productos::model::Genero,
+    productos::model::{CrearGeneroRequest, Genero},
 };
 
 pub struct GeneroRepo;
@@ -24,6 +24,75 @@ impl GeneroRepo {
                 genero_literario: r.get("genero_literario"),
             })
             .collect())
+    }
+
+    pub async fn crear_genero(pool: &DbPool, req: &CrearGeneroRequest) -> Result<Genero, AppError> {
+        let res = sqlx::query("INSERT INTO genero (genero_literario) VALUES (?)")
+            .bind(&req.genero_literario)
+            .execute(pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        Ok(Genero {
+            id_genero: res.last_insert_id() as i32,
+            genero_literario: req.genero_literario.clone(),
+        })
+    }
+
+    pub async fn actualizar_genero(
+        pool: &DbPool,
+        id: i32,
+        req: &CrearGeneroRequest,
+    ) -> Result<Genero, AppError> {
+        let res = sqlx::query("UPDATE genero SET genero_literario = ? WHERE id_genero = ?")
+            .bind(&req.genero_literario)
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound(format!("Género con ID {} no encontrado", id)));
+        }
+
+        Ok(Genero {
+            id_genero: id,
+            genero_literario: req.genero_literario.clone(),
+        })
+    }
+
+    pub async fn eliminar_genero(pool: &DbPool, id: i32) -> Result<(), AppError> {
+        // libro_genero/revista_genero borran en cascada: sin este chequeo se perderían géneros de productos.
+        let row = sqlx::query(
+            "SELECT (SELECT COUNT(*) FROM libro_genero WHERE id_genero = ?)
+                  + (SELECT COUNT(*) FROM revista_genero WHERE id_genero = ?)
+                  + (SELECT COUNT(*) FROM mueble WHERE id_genero = ?) AS cant",
+        )
+        .bind(id)
+        .bind(id)
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let cant = row_get_i64(&row, "cant");
+        if cant > 0 {
+            return Err(AppError::BadRequest(format!(
+                "No es posible eliminar el género (ID {}): está en uso por {} libro(s), revista(s) o mueble(s).",
+                id, cant
+            )));
+        }
+
+        let res = sqlx::query("DELETE FROM genero WHERE id_genero = ?")
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound(format!("Género con ID {} no encontrado", id)));
+        }
+        Ok(())
     }
 
     pub async fn asociar_generos_libro(

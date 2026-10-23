@@ -2,7 +2,7 @@
 -- SCRIPT DE CREACIÓN Y DATOS SEMILLA (SEEDS V2) - LIBRERÍA NOVABOOK
 -- ============================================================================
 -- Base de Datos: Libreria
--- Versión: 2.0 (Relación N:M Géneros, CRUD Autores, Proveedores, Ventas y Compras)
+-- Versión: 2.0 (Relación N:M Géneros, CRUD Autores, Proveedores, Ventas, Compras, Muebles y Motivos)
 -- Compatible con: MySQL 8.0+ / MariaDB 10.5+
 -- ============================================================================
 
@@ -14,11 +14,13 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------------------------------------------------------
 -- 0. Limpieza previa de tablas y vistas (en orden inverso de dependencia)
 -- ----------------------------------------------------------------------------
+DROP VIEW IF EXISTS `vista_cliente_compras`;
 DROP VIEW IF EXISTS `proveedor`;
 DROP TABLE IF EXISTS `detalle_compra`;
 DROP TABLE IF EXISTS `compras_proveedor`;
 DROP TABLE IF EXISTS `detalle_ventas`;
 DROP TABLE IF EXISTS `ventas`;
+DROP TABLE IF EXISTS `clientes`;
 DROP TABLE IF EXISTS `movimientos`;
 DROP TABLE IF EXISTS `bitacora`;
 DROP TABLE IF EXISTS `devolucion`;
@@ -28,6 +30,7 @@ DROP TABLE IF EXISTS `libro_genero`;
 DROP TABLE IF EXISTS `revistas`;
 DROP TABLE IF EXISTS `libros`;
 DROP TABLE IF EXISTS `usuarios`;
+DROP TABLE IF EXISTS `motivos`;
 DROP TABLE IF EXISTS `mueble`;
 DROP TABLE IF EXISTS `autores`;
 DROP TABLE IF EXISTS `genero`;
@@ -132,7 +135,7 @@ INSERT INTO `autores` (`id_autor`, `nombre`, `apellidos`, `nacionalidad`, `biogr
 -- 6. Tabla: mueble
 -- ----------------------------------------------------------------------------
 CREATE TABLE `mueble` (
-  `id_Mueble` INT NOT NULL,
+  `id_Mueble` INT NOT NULL AUTO_INCREMENT,
   `id_genero` INT NOT NULL,
   PRIMARY KEY (`id_Mueble`),
   KEY `FK_MUEBLE_GENERO` (`id_genero`),
@@ -145,6 +148,21 @@ INSERT INTO `mueble` (`id_Mueble`, `id_genero`) VALUES
   (13, 13),
   (61, 61),
   (62, 62);
+
+-- ----------------------------------------------------------------------------
+-- 6b. Tabla: motivos (Catálogo de motivos)
+-- ----------------------------------------------------------------------------
+CREATE TABLE `motivos` (
+  `id_motivo` INT NOT NULL AUTO_INCREMENT,
+  `motivo` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id_motivo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `motivos` (`id_motivo`, `motivo`) VALUES
+  (1, 'Reabastecimiento'),
+  (2, 'Defecto de imprenta'),
+  (3, 'Sobrestock'),
+  (4, 'Error de pedido');
 
 -- ----------------------------------------------------------------------------
 -- 7. Tabla: usuarios
@@ -322,17 +340,37 @@ INSERT INTO `devolucion` (`id_devolucion`, `fecha`, `total_piezas`, `estado`, `a
   (2, CURDATE(), 5, 'APROBADO', 'Marco Perez Luevano', 628777129, 3);
 
 -- ----------------------------------------------------------------------------
--- 14. Tablas: ventas y detalle_ventas (con nombre_cliente)
+-- 14. Tablas: clientes, ventas y detalle_ventas (Soporte N libros y N revistas por cliente)
 -- ----------------------------------------------------------------------------
+CREATE TABLE `clientes` (
+  `id_cliente` INT NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(150) NOT NULL,
+  `rfc` VARCHAR(20) DEFAULT NULL,
+  `telefono` VARCHAR(25) DEFAULT NULL,
+  `correo` VARCHAR(100) DEFAULT NULL,
+  `direccion` VARCHAR(255) DEFAULT NULL,
+  `fecha_registro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_cliente`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `clientes` (`id_cliente`, `nombre`, `rfc`, `telefono`, `correo`, `direccion`) VALUES
+  (1, 'Público en General', 'XAXX010101000', '0000000000', 'general@novabook.com', 'Venta mostrador'),
+  (2, 'Ing. Fernando Peña', 'PEEF850315AA1', '8441234567', 'fernando.pena@email.com', 'Blvd. Venustiano Carranza 2340, Saltillo, Coah.'),
+  (3, 'Dra. Carmen Salinas', 'SAGC781012BB2', '8449876543', 'carmen.salinas@email.com', 'Calle Hidalgo 450, Centro, Saltillo, Coah.'),
+  (4, 'Lic. Roberto Gómez', 'GORL900220CC3', '8445558899', 'roberto.gomez@email.com', 'Av. Universidad 890, Saltillo, Coah.');
+
 CREATE TABLE `ventas` (
   `id_venta` BIGINT NOT NULL AUTO_INCREMENT,
   `id_usuarios` BIGINT NOT NULL,
+  `id_cliente` INT NOT NULL DEFAULT 1,
   `nombre_cliente` VARCHAR(150) NOT NULL DEFAULT 'Público en General',
   `fecha_hora` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `total` DOUBLE NOT NULL DEFAULT 0.0,
   PRIMARY KEY (`id_venta`),
   KEY `FK_VENTAS_USUARIOS` (`id_usuarios`),
-  CONSTRAINT `FK_VENTAS_USUARIOS` FOREIGN KEY (`id_usuarios`) REFERENCES `usuarios` (`id_usuarios`)
+  KEY `FK_VENTAS_CLIENTE` (`id_cliente`),
+  CONSTRAINT `FK_VENTAS_USUARIOS` FOREIGN KEY (`id_usuarios`) REFERENCES `usuarios` (`id_usuarios`),
+  CONSTRAINT `FK_VENTAS_CLIENTE` FOREIGN KEY (`id_cliente`) REFERENCES `clientes` (`id_cliente`) ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `detalle_ventas` (
@@ -347,6 +385,44 @@ CREATE TABLE `detalle_ventas` (
   KEY `FK_DETALLE_VENTA` (`id_venta`),
   CONSTRAINT `FK_DETALLE_VENTA` FOREIGN KEY (`id_venta`) REFERENCES `ventas` (`id_venta`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Datos semilla: Cliente adquiriendo N cantidad de libros y N cantidad de revistas
+INSERT INTO `ventas` (`id_venta`, `id_usuarios`, `id_cliente`, `nombre_cliente`, `fecha_hora`, `total`) VALUES
+  (1, 628777129, 2, 'Ing. Fernando Peña', DATE_SUB(NOW(), INTERVAL 1 DAY), 1060.00),
+  (2, 628777129, 3, 'Dra. Carmen Salinas', NOW(), 484.00);
+
+INSERT INTO `detalle_ventas` (`id_detalle`, `id_venta`, `codigo_ean`, `tipo_producto`, `cantidad`, `precio_unitario`, `subtotal`) VALUES
+  -- Venta #1: Cliente adquiere 2 libros (Cien Años de Soledad) y 3 revistas (National Geographic)
+  (1, 1, 9786073832014, 'Libro', 2, 350.00, 700.00),
+  (2, 1, 9771234567010, 'Revista', 3, 120.00, 360.00),
+  -- Venta #2: Cliente adquiere 1 libro (Un Himno a la Vida), 1 revista NatGeo y 1 revista Muy Interesante
+  (3, 2, 9786073868723, 'Libro', 1, 299.00, 299.00),
+  (4, 2, 9771234567010, 'Revista', 1, 120.00, 120.00),
+  (5, 2, 9772007490001, 'Revista', 1, 65.00, 65.00);
+
+-- Vista Relacional: Consulta completa de clientes y productos comprados (libros y revistas)
+CREATE OR REPLACE VIEW `vista_cliente_compras` AS
+SELECT 
+  c.id_cliente,
+  c.nombre AS nombre_cliente,
+  c.telefono AS telefono_cliente,
+  c.correo AS correo_cliente,
+  v.id_venta,
+  v.fecha_hora AS fecha_compra,
+  v.total AS total_venta,
+  dv.id_detalle,
+  dv.tipo_producto,
+  dv.codigo_ean,
+  COALESCE(l.nombre_libro, r.nombre_revista, 'Producto Desconocido') AS nombre_producto,
+  dv.cantidad,
+  dv.precio_unitario,
+  dv.subtotal
+FROM clientes c
+JOIN ventas v ON c.id_cliente = v.id_cliente
+JOIN detalle_ventas dv ON v.id_venta = dv.id_venta
+LEFT JOIN libros l ON dv.codigo_ean = l.codigo_ean AND dv.tipo_producto = 'Libro' AND l.id_ubicacion = 1
+LEFT JOIN revistas r ON dv.codigo_ean = r.codigo_ean AND dv.tipo_producto = 'Revista' AND r.id_ubicacion = 1;
+
 
 -- ----------------------------------------------------------------------------
 -- 15. Tablas: compras_proveedor y detalle_compra

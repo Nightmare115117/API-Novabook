@@ -1,6 +1,6 @@
 -- ============================================================================
 -- SCRIPT DE MIGRACIÓN NOVABOOK V2
--- Actualización de esquema: Géneros (N:M), Autores, Proveedores, Ventas y Compras
+-- Actualización de esquema: Géneros (N:M), Autores, Proveedores, Ventas, Compras, Muebles y Motivos
 -- ============================================================================
 
 USE `Libreria`;
@@ -176,8 +176,25 @@ DROP TABLE IF EXISTS `proveedor`;
 CREATE OR REPLACE VIEW `proveedor` AS SELECT * FROM `proveedores`;
 
 -- ----------------------------------------------------------------------------
--- 5. Agregar nombre_cliente a la tabla ventas
+-- 5. Creación de tabla clientes y actualización de tabla ventas con relación FK
 -- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `clientes` (
+  `id_cliente` INT NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(150) NOT NULL,
+  `rfc` VARCHAR(20) DEFAULT NULL,
+  `telefono` VARCHAR(25) DEFAULT NULL,
+  `correo` VARCHAR(100) DEFAULT NULL,
+  `direccion` VARCHAR(255) DEFAULT NULL,
+  `fecha_registro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_cliente`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT IGNORE INTO `clientes` (`id_cliente`, `nombre`, `rfc`, `telefono`, `correo`, `direccion`) VALUES
+  (1, 'Público en General', 'XAXX010101000', '0000000000', 'general@novabook.com', 'Venta mostrador'),
+  (2, 'Ing. Fernando Peña', 'PEEF850315AA1', '8441234567', 'fernando.pena@email.com', 'Blvd. Venustiano Carranza 2340, Saltillo, Coah.'),
+  (3, 'Dra. Carmen Salinas', 'SAGC781012BB2', '8449876543', 'carmen.salinas@email.com', 'Calle Hidalgo 450, Centro, Saltillo, Coah.'),
+  (4, 'Lic. Roberto Gómez', 'GORL900220CC3', '8445558899', 'roberto.gomez@email.com', 'Av. Universidad 890, Saltillo, Coah.');
+
 SET @add_col_cliente = (
   SELECT IF(COUNT(*) = 0, 'ALTER TABLE ventas ADD COLUMN nombre_cliente VARCHAR(150) NOT NULL DEFAULT \'Público en General\' AFTER id_usuarios;', 'SELECT 1;')
   FROM information_schema.COLUMNS
@@ -186,6 +203,52 @@ SET @add_col_cliente = (
 PREPARE stmt FROM @add_col_cliente;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+SET @add_col_id_cliente = (
+  SELECT IF(COUNT(*) = 0, 'ALTER TABLE ventas ADD COLUMN id_cliente INT NOT NULL DEFAULT 1 AFTER id_usuarios;', 'SELECT 1;')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = 'Libreria' AND TABLE_NAME = 'ventas' AND COLUMN_NAME = 'id_cliente'
+);
+PREPARE stmt FROM @add_col_id_cliente;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Vincular ventas existentes con clientes registrados
+UPDATE `ventas` v
+JOIN `clientes` c ON LOWER(TRIM(v.nombre_cliente)) = LOWER(TRIM(c.nombre))
+SET v.id_cliente = c.id_cliente;
+
+SET @add_fk_cliente = (
+  SELECT IF(COUNT(*) = 0, 'ALTER TABLE ventas ADD CONSTRAINT FK_VENTAS_CLIENTE FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON UPDATE CASCADE ON DELETE RESTRICT;', 'SELECT 1;')
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = 'Libreria' AND TABLE_NAME = 'ventas' AND CONSTRAINT_NAME = 'FK_VENTAS_CLIENTE'
+);
+PREPARE stmt FROM @add_fk_cliente;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Vista para consultar productos comprados por clientes (libros y revistas)
+CREATE OR REPLACE VIEW `vista_cliente_compras` AS
+SELECT 
+  c.id_cliente,
+  c.nombre AS nombre_cliente,
+  c.telefono AS telefono_cliente,
+  c.correo AS correo_cliente,
+  v.id_venta,
+  v.fecha_hora AS fecha_compra,
+  v.total AS total_venta,
+  dv.id_detalle,
+  dv.tipo_producto,
+  dv.codigo_ean,
+  COALESCE(l.nombre_libro, r.nombre_revista, 'Producto Desconocido') AS nombre_producto,
+  dv.cantidad,
+  dv.precio_unitario,
+  dv.subtotal
+FROM clientes c
+JOIN ventas v ON c.id_cliente = v.id_cliente
+JOIN detalle_ventas dv ON v.id_venta = dv.id_venta
+LEFT JOIN libros l ON dv.codigo_ean = l.codigo_ean AND dv.tipo_producto = 'Libro' AND l.id_ubicacion = 1
+LEFT JOIN revistas r ON dv.codigo_ean = r.codigo_ean AND dv.tipo_producto = 'Revista' AND r.id_ubicacion = 1;
 
 -- ----------------------------------------------------------------------------
 -- 6. Crear tablas para registro de Compras a Proveedor
@@ -229,5 +292,23 @@ INSERT INTO `detalle_compra` (`id_detalle_compra`, `id_compra`, `codigo_ean`, `t
   (3, 2, 9786073868723, 'Libro', 20, 199.00, 3980.00),
   (4, 2, 9771234567010, 'Revista', 25, 80.00, 2000.00)
 ON DUPLICATE KEY UPDATE `subtotal` = VALUES(`subtotal`);
+
+-- ----------------------------------------------------------------------------
+-- 7. Muebles (alta desde el frontend) y catálogo de motivos
+-- ----------------------------------------------------------------------------
+-- El frontend da de alta muebles sin enviar id: id_Mueble pasa a AUTO_INCREMENT (los ids actuales se conservan)
+ALTER TABLE `mueble` MODIFY COLUMN `id_Mueble` INT NOT NULL AUTO_INCREMENT;
+
+CREATE TABLE IF NOT EXISTS `motivos` (
+  `id_motivo` INT NOT NULL AUTO_INCREMENT,
+  `motivo` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id_motivo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT IGNORE INTO `motivos` (`id_motivo`, `motivo`) VALUES
+  (1, 'Reabastecimiento'),
+  (2, 'Defecto de imprenta'),
+  (3, 'Sobrestock'),
+  (4, 'Error de pedido');
 
 SET FOREIGN_KEY_CHECKS = 1;
