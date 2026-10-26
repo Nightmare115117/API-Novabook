@@ -36,7 +36,7 @@ impl UsuarioRepo {
     pub async fn listar_todos(pool: &DbPool) -> Result<Vec<Usuario>, AppError> {
         let rows = sqlx::query(
             r#"
-            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena
+            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estatus
             FROM usuarios
             ORDER BY id_usuarios ASC
             "#,
