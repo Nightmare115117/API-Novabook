@@ -61,7 +61,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/Dev-Server.pem \
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
-              export KUBECONFIG=/home/iron/.kube/config &&
+              export KUBECONFIG=/home/iron/.kube/config
               cd ~/K3s &&
               kubectl apply -f database.yml &&
             "
