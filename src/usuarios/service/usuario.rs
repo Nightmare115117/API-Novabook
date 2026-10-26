@@ -39,12 +39,26 @@ impl UsuarioService {
             || usuario.contrasena.starts_with("$2a$")
             || usuario.contrasena.starts_with("$2y$")
         {
-            bcrypt::verify(&req.contrasena, &usuario.contrasena).unwrap_or(false)
+            let plano = req.contrasena.clone();
+            let hash = usuario.contrasena.clone();
+            tokio::task::spawn_blocking(move ||
+                bcrypt::verify(&plano, &hash).unwrap_or(false)
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("Error verificando contraseña: {}", e)))?
         } else {
             usuario.contrasena == req.contrasena
         };
 
+        let activo = usuario.estatus;
+
         if !pass_valida {
+            return Err(AppError::Unauthorized(
+                "Credenciales incorrectas".to_string(),
+            ));
+        }
+
+        if !activo {
             return Err(AppError::Unauthorized(
                 "Credenciales incorrectas".to_string(),
             ));
