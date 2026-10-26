@@ -44,6 +44,7 @@ pub struct Usuario {
     pub apellido_materno: Option<String>,
     pub telefono: Option<i64>,
     pub contrasena: String,
+    pub estatus: bool
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +101,7 @@ pub struct ActualizarUsuarioRequest {
 pub struct LoginRequest {
     pub id_usuario: i64,
     pub contrasena: String,
+    pub estatus: bool
 }
 
 #[derive(Debug, Clone, Serialize)]

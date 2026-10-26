@@ -64,7 +64,6 @@ jobs:
               export KUBECONFIG=/home/iron/.kube/config &&
               cd ~/K3s &&
               kubectl apply -f database.yml &&
-              kubectl apply -f backend.yml
             "
 
       - name: Reiniciar aplicaciones
@@ -72,7 +71,7 @@ jobs:
           ssh -i ~/.ssh/Dev-Server.pem \
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
               export KUBECONFIG=/home/iron/.kube/config &&
-              kubectl rollout restart deployment/backend 
+              kubectl rollout restart deployment/api-novabook
             "
 
       - name: Esperar aplicaciones
@@ -80,5 +79,5 @@ jobs:
           ssh -i ~/.ssh/Dev-Server.pem \
             ${{ secrets.SSH_HOST_NAME }}@${{ secrets.SSH_IP }} "
               export KUBECONFIG=/home/iron/.kube/config &&
-              kubectl rollout status deployment/backend --timeout=120s
+              kubectl rollout status deployment/api-novabook --timeout=120s
             "

@@ -11,7 +11,7 @@ impl UsuarioRepo {
     pub async fn buscar_por_id(pool: &DbPool, id: i64) -> Result<Option<Usuario>, AppError> {
         let row = sqlx::query(
             r#"
-            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena
+            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estatus
             FROM usuarios
             WHERE id_usuarios = ?
             "#,
@@ -29,6 +29,7 @@ impl UsuarioRepo {
             apellido_materno: r.get("apellido_materno"),
             telefono: row_get_opt_i64(&r, "telefono"),
             contrasena: r.get("contrasena"),
+            estatus: r.get("estatus"),
         }))
     }
 
@@ -54,6 +55,7 @@ impl UsuarioRepo {
                 apellido_materno: r.get("apellido_materno"),
                 telefono: row_get_opt_i64(&r, "telefono"),
                 contrasena: r.get("contrasena"),
+                estatus: r.get("estatus"),
             })
             .collect();
 
@@ -139,11 +141,17 @@ impl UsuarioRepo {
             apellido_materno: nuevo_materno,
             telefono: nuevo_tel,
             contrasena: nueva_pass,
+            estatus: true,
         })
     }
 
     pub async fn eliminar(pool: &DbPool, id: i64) -> Result<bool, AppError> {
-        let res = sqlx::query("DELETE FROM usuarios WHERE id_usuarios = ?")
+        let res = sqlx::query(r#"
+                UPDATE usuarios
+                SET estatus = FALSE
+                WHERE id_usuarios = ?
+                "#
+            )
             .bind(id)
             .execute(pool)
             .await
