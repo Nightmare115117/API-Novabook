@@ -56,6 +56,7 @@ pub struct UsuarioDto {
     pub apellido_paterno: Option<String>,
     pub apellido_materno: Option<String>,
     pub telefono: Option<i64>,
+    pub estatus: bool,
 }
 
 impl From<Usuario> for UsuarioDto {
@@ -72,6 +73,7 @@ impl From<Usuario> for UsuarioDto {
             apellido_paterno: u.apellido_paterno,
             apellido_materno: u.apellido_materno,
             telefono: u.telefono,
+            estatus: u.estatus,
         }
     }
 }
