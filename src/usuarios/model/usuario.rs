@@ -101,7 +101,6 @@ pub struct ActualizarUsuarioRequest {
 pub struct LoginRequest {
     pub id_usuario: i64,
     pub contrasena: String,
-    pub estatus: bool
 }
 
 #[derive(Debug, Clone, Serialize)]
