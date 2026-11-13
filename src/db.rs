@@ -39,8 +39,8 @@ pub async fn log_bitacora_tipo(
     detalle: &str,
 ) -> Result<(), AppError> {
     sqlx::query(
-        "INSERT INTO bitacora (fecha_hora, accion, detalle, id_usuarios, id_tipo_evento) \
-         VALUES (NOW(), ?, ?, ?, ?)",
+        "INSERT INTO bitacora (accion, detalle, id_usuarios, id_tipo_evento) \
+         VALUES (?, ?, ?, ?)",
     )
     .bind(accion)
     .bind(detalle)
