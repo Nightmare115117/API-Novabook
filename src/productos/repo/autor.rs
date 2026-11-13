@@ -10,7 +10,11 @@ pub struct AutorRepo;
 
 impl AutorRepo {
     pub async fn listar_autores(pool: &DbPool) -> Result<Vec<Autor>, AppError> {
-        let rows = sqlx::query("SELECT id_autores, nombre, apellidos, nacionalidad, estado FROM autores ORDER BY apellidos ASC, nombre ASC")
+        let rows = sqlx::query(
+            "SELECT a.id_autores, a.nombre, a.apellidos, a.nacionalidad, a.estado, \
+             (SELECT COUNT(*) FROM autores_has_libros ahl WHERE ahl.id_autores = a.id_autores) AS total_libros \
+             FROM autores a ORDER BY a.apellidos ASC, a.nombre ASC",
+        )
             .fetch_all(pool)
             .await
             .map_err(AppError::Database)?;
@@ -23,12 +27,17 @@ impl AutorRepo {
                 apellidos: r.get("apellidos"),
                 nacionalidad: r.get("nacionalidad"),
                 estado: r.get("estado"),
+                total_libros: row_get_i64(&r, "total_libros"),
             })
             .collect())
     }
 
     pub async fn buscar_autor(pool: &DbPool, id: i32) -> Result<Option<Autor>, AppError> {
-        let row = sqlx::query("SELECT id_autores, nombre, apellidos, nacionalidad, estado FROM autores WHERE id_autores = ?")
+        let row = sqlx::query(
+            "SELECT a.id_autores, a.nombre, a.apellidos, a.nacionalidad, a.estado, \
+             (SELECT COUNT(*) FROM autores_has_libros ahl WHERE ahl.id_autores = a.id_autores) AS total_libros \
+             FROM autores a WHERE a.id_autores = ?",
+        )
             .bind(id)
             .fetch_optional(pool)
             .await
@@ -40,6 +49,7 @@ impl AutorRepo {
             apellidos: r.get("apellidos"),
             nacionalidad: r.get("nacionalidad"),
             estado: r.get("estado"),
+            total_libros: row_get_i64(&r, "total_libros"),
         }))
     }
 
@@ -62,6 +72,7 @@ impl AutorRepo {
             apellidos: req.apellidos.clone(),
             nacionalidad: req.nacionalidad.clone(),
             estado: req.estado.unwrap_or(true),
+            total_libros: 0,
         })
     }
 
@@ -89,12 +100,21 @@ impl AutorRepo {
             )));
         }
 
+        let count_row = sqlx::query(
+            "SELECT COUNT(*) AS total_libros FROM autores_has_libros WHERE id_autores = ?",
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(AppError::Database)?;
+
         Ok(Autor {
             id_autores: id,
             nombre: req.nombre.clone(),
             apellidos: req.apellidos.clone(),
             nacionalidad: req.nacionalidad.clone(),
             estado: req.estado,
+            total_libros: row_get_i64(&count_row, "total_libros"),
         })
     }
 

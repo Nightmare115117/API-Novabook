@@ -9,6 +9,7 @@ pub struct Autor {
     pub apellidos: String,
     pub nacionalidad: Option<String>,
     pub estado: bool,
+    pub total_libros: i64,
 }
 
 impl Autor {
