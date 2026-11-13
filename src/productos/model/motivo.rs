@@ -5,10 +5,12 @@ use sqlx::FromRow;
 pub struct Motivo {
     pub id_motivo: i32,
     pub motivo: String,
+    pub descripcion: String,
 }
 
 // Sirve para POST y PUT (mismos campos).
 #[derive(Debug, Clone, Deserialize)]
 pub struct CrearMotivoRequest {
     pub motivo: String,
+    pub descripcion: String,
 }
