@@ -5,6 +5,8 @@ use sqlx::FromRow;
 pub struct Genero {
     pub id_genero: i32,
     pub genero_literario: String,
+    pub total_libros: i64,
+    pub total_revistas: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
