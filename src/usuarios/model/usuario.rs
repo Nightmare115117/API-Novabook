@@ -98,6 +98,7 @@ pub struct ActualizarUsuarioRequest {
     pub apellido_materno: Option<String>,
     pub telefono: Option<i64>,
     pub contrasena: Option<String>,
+    pub estatus: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

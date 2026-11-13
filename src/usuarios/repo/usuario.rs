@@ -114,11 +114,12 @@ impl UsuarioRepo {
             .contrasena
             .clone()
             .unwrap_or_else(|| actual.contrasena.clone());
+        let nuevo_estado = req.estatus.unwrap_or(actual.estado);
 
         sqlx::query(
             r#"
             UPDATE usuarios
-            SET id_roles = ?, nombre = ?, apellido_paterno = ?, apellido_materno = ?, telefono = ?, contrasena = ?
+            SET id_roles = ?, nombre = ?, apellido_paterno = ?, apellido_materno = ?, telefono = ?, contrasena = ?, estado = ?
             WHERE id_usuarios = ?
             "#,
         )
@@ -128,6 +129,7 @@ impl UsuarioRepo {
         .bind(&nuevo_materno)
         .bind(nuevo_tel)
         .bind(&nueva_pass)
+        .bind(nuevo_estado)
         .bind(id)
         .execute(pool)
         .await
@@ -141,7 +143,7 @@ impl UsuarioRepo {
             apellido_materno: nuevo_materno,
             telefono: nuevo_tel,
             contrasena: nueva_pass,
-            estado: actual.estado,
+            estado: nuevo_estado,
         })
     }
 

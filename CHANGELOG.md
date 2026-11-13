@@ -4,6 +4,12 @@ Todos los cambios notables, decisiones de arquitectura, especificaciones técnic
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y este proyecto se adhiere a [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- `GET /api/autores` y `GET /api/autores/{id}` devuelven `total_libros`, calculado desde `autores_has_libros`.
+- `GET /api/generos` devuelve `total_libros` y `total_revistas`, contando productos distintos asociados por género desde `productos_has_genero`; no representa ejemplares ni existencias por ubicación.
+
 ---
 
 ## [0.1.0] - 2026-09-18

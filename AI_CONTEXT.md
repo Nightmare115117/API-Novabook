@@ -157,6 +157,8 @@ Rutas bajo `/api`:
 - `PUT /api/generos/{id}`
 - `DELETE /api/generos/{id}`
 
+`GET /api/generos` incluye en cada elemento `total_libros` y `total_revistas`, contados desde `productos_has_genero` y asociados con las tablas `libros` y `revistas`. Estos campos alimentan la columna **Títulos asociados** del catálogo de géneros en el frontend. Cada producto se cuenta una vez por género mediante `COUNT(DISTINCT codigo_ean)`, sin sumar ejemplares ni duplicar existencias por ubicación.
+
 - `GET /api/motivos`
 - `POST /api/motivos`
 - `PUT /api/motivos/{id}`
@@ -171,6 +173,8 @@ Rutas bajo `/api`:
 - `POST /api/autores`
 - `PUT /api/autores/{id}`
 - `DELETE /api/autores/{id}`
+
+`GET /api/autores` y `GET /api/autores/{id}` incluyen `total_libros`, calculado a partir de `autores_has_libros`. El frontend usa este valor en la columna **Títulos asociados** del catálogo de autores. El conteo representa títulos asociados, no existencias.
 
 - `GET /api/proveedores`
 - `POST /api/proveedores`
