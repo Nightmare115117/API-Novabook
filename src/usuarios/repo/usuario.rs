@@ -29,7 +29,7 @@ impl UsuarioRepo {
             apellido_materno: r.get("apellido_materno"),
             telefono: row_get_opt_i64(&r, "telefono"),
             contrasena: r.get("contrasena"),
-            estatus: r.get("estatus"),
+            estatus: r.get("estado"),
         }))
     }
 
