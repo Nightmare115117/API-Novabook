@@ -5,6 +5,11 @@ use sqlx::FromRow;
 pub struct Mueble {
     pub id_mueble: i32,
     pub id_genero: i32,
+    pub id_ubicacion: i32,
+    pub codigo_mueble: String,
+    pub nombre_mueble: String,
+    pub capacidad: Option<i32>,
+    pub descripcion: Option<String>,
     pub genero_literario: String,
 }
 
@@ -12,4 +17,9 @@ pub struct Mueble {
 #[derive(Debug, Clone, Deserialize)]
 pub struct CrearMuebleRequest {
     pub id_genero: i32,
+    pub id_ubicacion: i32,
+    pub codigo_mueble: String,
+    pub nombre_mueble: String,
+    pub capacidad: Option<i32>,
+    pub descripcion: Option<String>,
 }

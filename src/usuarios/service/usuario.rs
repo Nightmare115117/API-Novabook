@@ -50,7 +50,7 @@ impl UsuarioService {
             usuario.contrasena == req.contrasena
         };
 
-        let activo = usuario.estatus;
+        let activo = usuario.estado;
 
         if !pass_valida {
             return Err(AppError::Unauthorized(

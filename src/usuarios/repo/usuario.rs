@@ -29,7 +29,7 @@ impl UsuarioRepo {
             apellido_materno: r.get("apellido_materno"),
             telefono: row_get_opt_i64(&r, "telefono"),
             contrasena: r.get("contrasena"),
-            estatus: r.get("estado"),
+            estado: r.get("estado"),
         }))
     }
 
@@ -55,7 +55,7 @@ impl UsuarioRepo {
                 apellido_materno: r.get("apellido_materno"),
                 telefono: row_get_opt_i64(&r, "telefono"),
                 contrasena: r.get("contrasena"),
-                estatus: r.get("estado"),
+                estado: r.get("estado"),
             })
             .collect();
 
@@ -141,7 +141,7 @@ impl UsuarioRepo {
             apellido_materno: nuevo_materno,
             telefono: nuevo_tel,
             contrasena: nueva_pass,
-            estatus: true,
+            estado: actual.estado,
         })
     }
 

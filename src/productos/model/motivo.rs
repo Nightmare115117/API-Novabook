@@ -4,13 +4,15 @@ use sqlx::FromRow;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Motivo {
     pub id_motivo: i32,
-    pub motivo: String,
-    pub descripcion: String,
+    #[serde(rename = "motivo")]
+    pub nombre_motivo: String,
+    pub descripcion: Option<String>,
 }
 
 // Sirve para POST y PUT (mismos campos).
 #[derive(Debug, Clone, Deserialize)]
 pub struct CrearMotivoRequest {
-    pub motivo: String,
-    pub descripcion: String,
+    #[serde(alias = "motivo")]
+    pub nombre_motivo: String,
+    pub descripcion: Option<String>,
 }

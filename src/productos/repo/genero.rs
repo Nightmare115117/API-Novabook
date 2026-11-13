@@ -62,13 +62,10 @@ impl GeneroRepo {
     }
 
     pub async fn eliminar_genero(pool: &DbPool, id: i32) -> Result<(), AppError> {
-        // libro_genero/revista_genero borran en cascada: sin este chequeo se perderían géneros de productos.
         let row = sqlx::query(
-            "SELECT (SELECT COUNT(*) FROM libro_genero WHERE id_genero = ?)
-                  + (SELECT COUNT(*) FROM revista_genero WHERE id_genero = ?)
+            "SELECT (SELECT COUNT(*) FROM productos_has_genero WHERE id_genero = ?)
                   + (SELECT COUNT(*) FROM mueble WHERE id_genero = ?) AS cant",
         )
-        .bind(id)
         .bind(id)
         .bind(id)
         .fetch_one(pool)
@@ -100,15 +97,14 @@ impl GeneroRepo {
         codigo_ean: i64,
         generos: &[i32],
     ) -> Result<(), AppError> {
-        // Limpiar géneros existentes para este libro
-        sqlx::query("DELETE FROM libro_genero WHERE codigo_ean = ?")
+        sqlx::query("DELETE FROM productos_has_genero WHERE codigo_ean = ?")
             .bind(codigo_ean)
             .execute(pool)
             .await
             .map_err(AppError::Database)?;
 
         for &id_gen in generos {
-            sqlx::query("INSERT IGNORE INTO libro_genero (codigo_ean, id_genero) VALUES (?, ?)")
+            sqlx::query("INSERT IGNORE INTO productos_has_genero (codigo_ean, id_genero) VALUES (?, ?)")
                 .bind(codigo_ean)
                 .bind(id_gen)
                 .execute(pool)
@@ -123,14 +119,14 @@ impl GeneroRepo {
         codigo_ean: i64,
         generos: &[i32],
     ) -> Result<(), AppError> {
-        sqlx::query("DELETE FROM revista_genero WHERE codigo_ean = ?")
+        sqlx::query("DELETE FROM productos_has_genero WHERE codigo_ean = ?")
             .bind(codigo_ean)
             .execute(pool)
             .await
             .map_err(AppError::Database)?;
 
         for &id_gen in generos {
-            sqlx::query("INSERT IGNORE INTO revista_genero (codigo_ean, id_genero) VALUES (?, ?)")
+            sqlx::query("INSERT IGNORE INTO productos_has_genero (codigo_ean, id_genero) VALUES (?, ?)")
                 .bind(codigo_ean)
                 .bind(id_gen)
                 .execute(pool)

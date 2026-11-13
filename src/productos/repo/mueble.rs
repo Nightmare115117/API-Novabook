@@ -12,6 +12,11 @@ fn mapear(r: &sqlx::mysql::MySqlRow) -> Mueble {
     Mueble {
         id_mueble: row_get_i32(r, "id_mueble"),
         id_genero: row_get_i32(r, "id_genero"),
+        id_ubicacion: row_get_i32(r, "id_ubicacion"),
+        codigo_mueble: r.get("codigo_mueble"),
+        nombre_mueble: r.get("nombre_mueble"),
+        capacidad: r.get("capacidad"),
+        descripcion: r.get("descripcion"),
         genero_literario: r.get("genero_literario"),
     }
 }
@@ -19,7 +24,8 @@ fn mapear(r: &sqlx::mysql::MySqlRow) -> Mueble {
 impl MuebleRepo {
     pub async fn listar_muebles(pool: &DbPool) -> Result<Vec<Mueble>, AppError> {
         let rows = sqlx::query(
-            "SELECT m.id_Mueble AS id_mueble, m.id_genero, g.genero_literario \
+            "SELECT m.id_mueble, m.id_genero, m.id_ubicacion, m.codigo_mueble, \
+             m.nombre_mueble, m.capacidad, m.descripcion, g.genero_literario \
              FROM mueble m JOIN genero g ON g.id_genero = m.id_genero ORDER BY m.id_Mueble ASC",
         )
             .fetch_all(pool)
@@ -30,7 +36,8 @@ impl MuebleRepo {
 
     async fn buscar_mueble(pool: &DbPool, id: i32) -> Result<Option<Mueble>, AppError> {
         let row = sqlx::query(
-            "SELECT m.id_Mueble AS id_mueble, m.id_genero, g.genero_literario \
+            "SELECT m.id_mueble, m.id_genero, m.id_ubicacion, m.codigo_mueble, \
+             m.nombre_mueble, m.capacidad, m.descripcion, g.genero_literario \
              FROM mueble m JOIN genero g ON g.id_genero = m.id_genero WHERE m.id_Mueble = ?",
         )
             .bind(id)
@@ -54,8 +61,16 @@ impl MuebleRepo {
 
     pub async fn crear_mueble(pool: &DbPool, req: &CrearMuebleRequest) -> Result<Mueble, AppError> {
         Self::validar_genero(pool, req.id_genero).await?;
-        let res = sqlx::query("INSERT INTO mueble (id_genero) VALUES (?)")
+        let res = sqlx::query(
+            "INSERT INTO mueble (id_genero, id_ubicacion, codigo_mueble, nombre_mueble, capacidad, descripcion) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
             .bind(req.id_genero)
+            .bind(req.id_ubicacion)
+            .bind(&req.codigo_mueble)
+            .bind(&req.nombre_mueble)
+            .bind(req.capacidad)
+            .bind(&req.descripcion)
             .execute(pool)
             .await
             .map_err(AppError::Database)?;
@@ -72,8 +87,16 @@ impl MuebleRepo {
         req: &CrearMuebleRequest,
     ) -> Result<Mueble, AppError> {
         Self::validar_genero(pool, req.id_genero).await?;
-        let res = sqlx::query("UPDATE mueble SET id_genero = ? WHERE id_Mueble = ?")
+        let res = sqlx::query(
+            "UPDATE mueble SET id_genero = ?, id_ubicacion = ?, codigo_mueble = ?, \
+             nombre_mueble = ?, capacidad = ?, descripcion = ? WHERE id_mueble = ?",
+        )
             .bind(req.id_genero)
+            .bind(req.id_ubicacion)
+            .bind(&req.codigo_mueble)
+            .bind(&req.nombre_mueble)
+            .bind(req.capacidad)
+            .bind(&req.descripcion)
             .bind(id)
             .execute(pool)
             .await
@@ -89,10 +112,8 @@ impl MuebleRepo {
 
     pub async fn eliminar_mueble(pool: &DbPool, id: i32) -> Result<(), AppError> {
         let row = sqlx::query(
-            "SELECT (SELECT COUNT(*) FROM libros WHERE id_mueble = ?)
-                  + (SELECT COUNT(*) FROM revistas WHERE id_mueble = ?) AS cant",
+            "SELECT COUNT(*) AS cant FROM existencias WHERE id_mueble = ?",
         )
-        .bind(id)
         .bind(id)
         .fetch_one(pool)
         .await
@@ -106,7 +127,7 @@ impl MuebleRepo {
             )));
         }
 
-        let res = sqlx::query("DELETE FROM mueble WHERE id_Mueble = ?")
+        let res = sqlx::query("DELETE FROM mueble WHERE id_mueble = ?")
             .bind(id)
             .execute(pool)
             .await

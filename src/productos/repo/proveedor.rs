@@ -11,7 +11,7 @@ pub struct ProveedorRepo;
 impl ProveedorRepo {
     pub async fn listar_proveedores(pool: &DbPool) -> Result<Vec<Proveedor>, AppError> {
         let rows = sqlx::query(
-            "SELECT id_proveedor, nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus FROM proveedores ORDER BY nombre_proveedor ASC"
+            "SELECT id_proveedor, nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus FROM proveedor ORDER BY nombre_proveedor ASC"
         )
         .fetch_all(pool)
         .await
@@ -34,7 +34,7 @@ impl ProveedorRepo {
 
     pub async fn buscar_proveedor(pool: &DbPool, id: i32) -> Result<Option<Proveedor>, AppError> {
         let row = sqlx::query(
-            "SELECT id_proveedor, nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus FROM proveedores WHERE id_proveedor = ?"
+            "SELECT id_proveedor, nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus FROM proveedor WHERE id_proveedor = ?"
         )
         .bind(id)
         .fetch_optional(pool)
@@ -59,7 +59,7 @@ impl ProveedorRepo {
     ) -> Result<Proveedor, AppError> {
         let res = sqlx::query(
             r#"
-            INSERT INTO proveedores (nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus)
+            INSERT INTO proveedor (nombre_proveedor, rfc, telefono, correo, direccion, persona_contacto, estatus)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
         )
@@ -94,7 +94,7 @@ impl ProveedorRepo {
     ) -> Result<Proveedor, AppError> {
         let res = sqlx::query(
             r#"
-            UPDATE proveedores
+            UPDATE proveedor
             SET nombre_proveedor = ?, rfc = ?, telefono = ?, correo = ?, direccion = ?, persona_contacto = ?, estatus = ?
             WHERE id_proveedor = ?
             "#,
@@ -134,13 +134,11 @@ impl ProveedorRepo {
         let row_ref = sqlx::query(
             r#"
             SELECT
-                (SELECT COUNT(*) FROM libros WHERE id_proveedor = ?) +
-                (SELECT COUNT(*) FROM revistas WHERE id_proveedor = ?) +
+                (SELECT COUNT(*) FROM productos WHERE id_proveedor = ?) +
                 (SELECT COUNT(*) FROM devolucion WHERE id_proveedor = ?) +
                 (SELECT COUNT(*) FROM compras_proveedor WHERE id_proveedor = ?) as total_ref
             "#,
         )
-        .bind(id)
         .bind(id)
         .bind(id)
         .bind(id)
@@ -150,7 +148,7 @@ impl ProveedorRepo {
 
         let total_ref: i64 = row_get_i64(&row_ref, "total_ref");
         if total_ref > 0 {
-            sqlx::query("UPDATE proveedores SET estatus = 'INACTIVO' WHERE id_proveedor = ?")
+            sqlx::query("UPDATE proveedor SET estatus = 'INACTIVO' WHERE id_proveedor = ?")
                 .bind(id)
                 .execute(pool)
                 .await
@@ -158,7 +156,7 @@ impl ProveedorRepo {
             return Ok(());
         }
 
-        let res = sqlx::query("DELETE FROM proveedores WHERE id_proveedor = ?")
+        let res = sqlx::query("DELETE FROM proveedor WHERE id_proveedor = ?")
             .bind(id)
             .execute(pool)
             .await
