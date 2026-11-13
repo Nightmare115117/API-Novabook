@@ -7,9 +7,9 @@ use crate::{
         model::{
             ActualizarAutorRequest, ActualizarProveedorRequest, Autor, CompraResponse,
             CrearAutorRequest, CrearProveedorRequest, Devolucion, ExistenciaInventario,
-            FiltroExistencias, Genero, HistorialDevolucionQuery, Libro, MovimientoDiarioItem,
-            Proveedor, RegistrarCompraRequest, RegistrarLibroRequest, RegistrarRevistaRequest,
-            RegistrarVentaRequest, Revista, VentaResponse,
+            FiltroExistencias, Genero, HistorialDevolucionQuery, ItemDevolucionRequest, Libro,
+            MovimientoDiarioItem, Proveedor, RegistrarCompraRequest, RegistrarLibroRequest,
+            RegistrarRevistaRequest, RegistrarVentaRequest, Revista, TipoProducto, VentaResponse,
         },
         repo::{
             AutorRepo, BitacoraRepo, CompraRepo, DevolucionRepo, GeneroRepo, InventarioRepo,
@@ -480,12 +480,19 @@ impl ProductoRepo {
 
     pub async fn registrar_devolucion(
         pool: &DbPool,
-        id_devolucion: i64,
-        total_piezas: i32,
         id_usuario: i64,
         id_proveedor: i32,
-    ) -> Result<(), AppError> {
-        DevolucionRepo::registrar_devolucion(pool, id_devolucion, total_piezas, id_usuario, id_proveedor).await
+        tipo_producto: TipoProducto,
+        items: &[ItemDevolucionRequest],
+    ) -> Result<i64, AppError> {
+        DevolucionRepo::registrar_devolucion(
+            pool,
+            id_usuario,
+            id_proveedor,
+            tipo_producto,
+            items,
+        )
+        .await
     }
 
     pub async fn buscar_devolucion(
@@ -505,10 +512,18 @@ impl ProductoRepo {
     pub async fn actualizar_estado_devolucion(
         pool: &DbPool,
         id: i64,
+        id_usuario_aprueba: i64,
         nuevo_estado: &str,
-        autorizado_por: &str,
+        aprobar: bool,
     ) -> Result<(), AppError> {
-        DevolucionRepo::actualizar_estado_devolucion(pool, id, nuevo_estado, autorizado_por).await
+        DevolucionRepo::actualizar_estado_devolucion(
+            pool,
+            id,
+            id_usuario_aprueba,
+            nuevo_estado,
+            aprobar,
+        )
+        .await
     }
 
     pub async fn consultar_movimiento_diario(

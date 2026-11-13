@@ -1,12 +1,10 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::{
     db::{DbPool, log_bitacora},
     error::AppError,
     productos::{
         model::{
             AprobarDevolucionRequest, CrearDevolucionRequest, Devolucion, HistorialDevolucionQuery,
-            ItemDevolucion, TipoProducto,
+            TipoProducto,
         },
         repo::DevolucionRepo,
     },
@@ -28,20 +26,30 @@ impl DevolucionService {
             ));
         }
 
-        let total_piezas: i32 = req.items.iter().map(|i| i.cantidad).sum();
-        let id_devolucion = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(1);
+        for item in &req.items {
+            if item.codigo_ean <= 0 || item.cantidad <= 0 || item.id_motivo <= 0 {
+                return Err(AppError::BadRequest(
+                    "Cada artículo debe tener EAN, cantidad e id_motivo válidos".to_string(),
+                ));
+            }
+        }
 
-        DevolucionRepo::registrar_devolucion(
+        let id_devolucion = DevolucionRepo::registrar_devolucion(
             pool,
-            id_devolucion,
-            total_piezas,
             actor_id,
             req.id_proveedor,
+            req.tipo_producto,
+            &req.items,
         )
         .await?;
+        let devolucion = DevolucionRepo::buscar_devolucion(pool, id_devolucion)
+            .await?
+            .ok_or_else(|| {
+                AppError::Internal(format!(
+                    "Devolución #{} no encontrada después de crearla",
+                    id_devolucion
+                ))
+            })?;
 
         let _ = log_bitacora(
             pool,
@@ -49,40 +57,14 @@ impl DevolucionService {
             "CREAR DEVOLUCIÓN",
             &format!(
                 "Devolución #{} creada. Proveedor ID: {}, Piezas: {}",
-                id_devolucion, req.id_proveedor, total_piezas
+                id_devolucion, req.id_proveedor, devolucion.total_piezas
             ),
         )
         .await;
 
-        let items: Vec<ItemDevolucion> = req
-            .items
-            .into_iter()
-            .map(|i| ItemDevolucion {
-                codigo_ean: i.codigo_ean,
-                sku: None,
-                titulo: format!("Artículo {}", i.codigo_ean),
-                cantidad: i.cantidad,
-                motivo: i.motivo,
-            })
-            .collect();
-
         Ok(Devolucion {
-            id_devolucion,
-            fecha: "Hoy".to_string(),
-            total_piezas,
-            estado: "Pendiente".to_string(),
-            autorizado_por: None,
-            id_usuarios: actor_id,
             vendedor_nombre: Some(actor_nombre.to_string()),
-            id_proveedor: req.id_proveedor,
-            nombre_proveedor: None,
-            proveedor_rfc: None,
-            proveedor_telefono: None,
-            proveedor_correo: None,
-            proveedor_direccion: None,
-            proveedor_contacto: None,
-            tipo_producto: req.tipo_producto,
-            items,
+            ..devolucion
         })
     }
 
@@ -128,11 +110,23 @@ impl DevolucionService {
             })?;
 
         let nuevo_estado = if req.aprobar {
-            "Autorizado"
+            "APROBADO"
         } else {
-            "Rechazado"
+            "RECHAZADO"
         };
-        DevolucionRepo::actualizar_estado_devolucion(pool, id_devolucion, nuevo_estado, actor_nombre)
+        if !actual.estado.eq_ignore_ascii_case("PENDIENTE") {
+            return Err(AppError::Conflict(format!(
+                "La devolución #{} ya fue evaluada (estado: {})",
+                id_devolucion, actual.estado
+            )));
+        }
+        DevolucionRepo::actualizar_estado_devolucion(
+            pool,
+            id_devolucion,
+            actor_id,
+            nuevo_estado,
+            req.aprobar,
+        )
             .await?;
 
         let _ = log_bitacora(

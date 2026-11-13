@@ -72,8 +72,8 @@ impl PdfService {
         );
         lines.push("DETALLE DE ARTICULOS:".to_string());
         lines.push(format!(
-            "{:<16} {:<10} {:<36} {:>6}",
-            "CODIGO EAN", "SKU", "TITULO", "CANT"
+            "{:<16} {:<10} {:<30} {:>6} {:<20}",
+            "CODIGO EAN", "SKU", "TITULO", "CANT", "MOTIVO"
         ));
         lines.push(
             "--------------------------------------------------------------------------------"
@@ -91,14 +91,18 @@ impl PdfService {
                     .sku
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "N/A".to_string());
-                let titulo_trunc = if item.titulo.len() > 34 {
-                    format!("{}...", &item.titulo[..31])
+                let titulo_trunc = if item.titulo.len() > 30 {
+                    format!("{}...", item.titulo.chars().take(27).collect::<String>())
                 } else {
                     item.titulo.clone()
                 };
                 lines.push(format!(
-                    "{:<16} {:<10} {:<36} {:>6}",
-                    item.codigo_ean, sku_str, titulo_trunc, item.cantidad
+                    "{:<16} {:<10} {:<30} {:>6} {:<20}",
+                    item.codigo_ean,
+                    sku_str,
+                    titulo_trunc,
+                    item.cantidad,
+                    item.motivo.as_deref().unwrap_or("N/D")
                 ));
             }
         }

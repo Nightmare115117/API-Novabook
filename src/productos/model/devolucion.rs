@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemDevolucion {
     pub codigo_ean: i64,
+    pub id_motivo: i32,
     pub sku: Option<i64>,
     pub titulo: String,
     pub cantidad: i32,
@@ -34,7 +35,7 @@ pub struct Devolucion {
 pub struct ItemDevolucionRequest {
     pub codigo_ean: i64,
     pub cantidad: i32,
-    pub motivo: Option<String>,
+    pub id_motivo: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
