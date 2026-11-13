@@ -156,6 +156,14 @@ pub fn router(state: AppState) -> Router<AppState> {
             get(devolucion::consultar_historial_devoluciones_jefe),
         )
         .route(
+            "/devoluciones/{id}/pdf/libros",
+            get(devolucion::generar_pdf_libros_vendedor),
+        )
+        .route(
+            "/devoluciones/{id}/pdf/revistas",
+            get(devolucion::generar_pdf_revistas_vendedor),
+        )
+        .route(
             "/movimientos/diarios",
             get(bitacora::consultar_movimiento_diario_jefe),
         )
