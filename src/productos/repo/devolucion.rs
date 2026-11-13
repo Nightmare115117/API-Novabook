@@ -44,7 +44,7 @@ impl DevolucionRepo {
                    p.direccion as proveedor_direccion, p.persona_contacto as proveedor_contacto
             FROM devolucion d
             JOIN usuarios u ON d.id_usuarios = u.id_usuarios
-            JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+            JOIN proveedor p ON d.id_proveedor = p.id_proveedor
             WHERE d.id_devolucion = ?
             "#,
         )
@@ -89,7 +89,7 @@ impl DevolucionRepo {
                    p.direccion as proveedor_direccion, p.persona_contacto as proveedor_contacto
             FROM devolucion d
             JOIN usuarios u ON d.id_usuarios = u.id_usuarios
-            JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+            JOIN proveedor p ON d.id_proveedor = p.id_proveedor
             WHERE 1 = 1
             "#,
         );

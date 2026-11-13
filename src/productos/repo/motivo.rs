@@ -11,7 +11,7 @@ pub struct MotivoRepo;
 impl MotivoRepo {
     pub async fn listar_motivos(pool: &DbPool) -> Result<Vec<Motivo>, AppError> {
         let rows =
-            sqlx::query("SELECT id_motivo, motivo, descripcion FROM motivos ORDER BY motivo ASC")
+            sqlx::query("SELECT id_motivo, nombre_motivo, descripcion FROM motivo ORDER BY nombre_motivo ASC")
                 .fetch_all(pool)
                 .await
                 .map_err(AppError::Database)?;
@@ -20,15 +20,15 @@ impl MotivoRepo {
             .into_iter()
             .map(|r| Motivo {
                 id_motivo: row_get_i32(&r, "id_motivo"),
-                motivo: r.get("motivo"),
+                nombre_motivo: r.get("nombre_motivo"),
                 descripcion: r.get("descripcion"),
             })
             .collect())
     }
 
     pub async fn crear_motivo(pool: &DbPool, req: &CrearMotivoRequest) -> Result<Motivo, AppError> {
-        let res = sqlx::query("INSERT INTO motivos (motivo, descripcion) VALUES (?, ?)")
-            .bind(&req.motivo)
+        let res = sqlx::query("INSERT INTO motivo (nombre_motivo, descripcion) VALUES (?, ?)")
+            .bind(&req.nombre_motivo)
             .bind(&req.descripcion)
             .execute(pool)
             .await
@@ -36,7 +36,7 @@ impl MotivoRepo {
 
         Ok(Motivo {
             id_motivo: res.last_insert_id() as i32,
-            motivo: req.motivo.clone(),
+            nombre_motivo: req.nombre_motivo.clone(),
             descripcion: req.descripcion.clone(),
         })
     }
@@ -46,8 +46,9 @@ impl MotivoRepo {
         id: i32,
         req: &CrearMotivoRequest,
     ) -> Result<Motivo, AppError> {
-        let res = sqlx::query("UPDATE motivos SET motivo = ? WHERE id_motivo = ?")
-            .bind(&req.motivo)
+        let res = sqlx::query("UPDATE motivo SET nombre_motivo = ?, descripcion = ? WHERE id_motivo = ?")
+            .bind(&req.nombre_motivo)
+            .bind(&req.descripcion)
             .bind(id)
             .execute(pool)
             .await
@@ -61,14 +62,13 @@ impl MotivoRepo {
         }
         Ok(Motivo {
             id_motivo: id,
-            motivo: req.motivo.clone(),
+            nombre_motivo: req.nombre_motivo.clone(),
             descripcion: req.descripcion.clone(),
         })
     }
 
-    // Ninguna tabla referencia motivos por FK (devolucion/movimientos guardan texto), se borra directo.
     pub async fn eliminar_motivo(pool: &DbPool, id: i32) -> Result<(), AppError> {
-        let res = sqlx::query("DELETE FROM motivos WHERE id_motivo = ?")
+        let res = sqlx::query("DELETE FROM motivo WHERE id_motivo = ?")
             .bind(id)
             .execute(pool)
             .await

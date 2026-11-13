@@ -44,7 +44,8 @@ pub struct Usuario {
     pub apellido_materno: Option<String>,
     pub telefono: Option<i64>,
     pub contrasena: String,
-    pub estatus: bool
+    #[serde(rename = "estatus")]
+    pub estado: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,7 +74,7 @@ impl From<Usuario> for UsuarioDto {
             apellido_paterno: u.apellido_paterno,
             apellido_materno: u.apellido_materno,
             telefono: u.telefono,
-            estatus: u.estatus,
+            estatus: u.estado,
         }
     }
 }

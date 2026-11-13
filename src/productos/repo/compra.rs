@@ -21,7 +21,7 @@ impl CompraRepo {
 
         // Verificar que proveedor existe
         let prov_row =
-            sqlx::query("SELECT nombre_proveedor FROM proveedores WHERE id_proveedor = ?")
+            sqlx::query("SELECT nombre_proveedor FROM proveedor WHERE id_proveedor = ?")
                 .bind(req.id_proveedor)
                 .fetch_optional(&mut *tx)
                 .await
@@ -248,7 +248,7 @@ impl CompraRepo {
                    DATE_FORMAT(c.fecha_hora, '%Y-%m-%d %H:%i:%s') as fecha_hora,
                    c.total, c.observaciones
             FROM compras_proveedor c
-            JOIN proveedores p ON c.id_proveedor = p.id_proveedor
+            JOIN proveedor p ON c.id_proveedor = p.id_proveedor
             JOIN usuarios u ON c.id_usuarios = u.id_usuarios
             ORDER BY c.id_compra DESC
             "#,

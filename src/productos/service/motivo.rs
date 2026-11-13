@@ -15,7 +15,7 @@ impl MotivoService {
     }
 
     fn validar(req: &CrearMotivoRequest) -> Result<(), AppError> {
-        if req.motivo.trim().is_empty() {
+        if req.nombre_motivo.trim().is_empty() {
             return Err(AppError::BadRequest("El motivo es obligatorio".to_string()));
         }
         Ok(())
@@ -32,7 +32,7 @@ impl MotivoService {
             pool,
             actor_id,
             "CREAR MOTIVO",
-            &format!("Motivo registrado: {} (ID: {})", m.motivo, m.id_motivo),
+            &format!("Motivo registrado: {} (ID: {})", m.nombre_motivo, m.id_motivo),
         )
         .await;
         Ok(m)
@@ -50,7 +50,7 @@ impl MotivoService {
             pool,
             actor_id,
             "ACTUALIZAR MOTIVO",
-            &format!("Motivo actualizado: {} (ID: {})", m.motivo, id),
+            &format!("Motivo actualizado: {} (ID: {})", m.nombre_motivo, id),
         )
         .await;
         Ok(m)

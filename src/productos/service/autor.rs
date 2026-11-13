@@ -40,7 +40,7 @@ impl AutorService {
             &format!(
                 "Autor registrado: {} (ID: {})",
                 autor.nombre_completo(),
-                autor.id_autor
+                autor.id_autores
             ),
         )
         .await;

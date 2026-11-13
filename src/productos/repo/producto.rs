@@ -46,7 +46,7 @@ impl ProductoRepo {
 
         if let Some(r) = row {
             let gen_rows = sqlx::query(
-                "SELECT lg.id_genero, g.genero_literario FROM libro_genero lg JOIN genero g ON lg.id_genero = g.id_genero WHERE lg.codigo_ean = ?"
+                "SELECT pg.id_genero, g.genero_literario FROM productos_has_genero pg JOIN genero g ON pg.id_genero = g.id_genero WHERE pg.codigo_ean = ?"
             )
             .bind(codigo_ean)
             .fetch_all(pool)
@@ -63,7 +63,7 @@ impl ProductoRepo {
                 .collect();
 
             let aut_rows = sqlx::query(
-                "SELECT la.id_autor, CONCAT(a.nombre, ' ', a.apellidos) as autor_nom FROM libro_autor la JOIN autores a ON la.id_autor = a.id_autor WHERE la.codigo_ean = ?"
+                "SELECT al.id_autores, CONCAT(a.nombre, ' ', a.apellidos) as autor_nom FROM autores_has_libros al JOIN autores a ON al.id_autores = a.id_autores WHERE al.codigo_ean = ?"
             )
             .bind(codigo_ean)
             .fetch_all(pool)
@@ -72,7 +72,7 @@ impl ProductoRepo {
 
             let autores: Vec<i32> = aut_rows
                 .iter()
-                .map(|ar| row_get_i32(ar, "id_autor"))
+                .map(|ar| row_get_i32(ar, "id_autores"))
                 .collect();
             let autores_nombres: Vec<String> =
                 aut_rows.iter().map(|ar| ar.get("autor_nom")).collect();
@@ -237,7 +237,7 @@ impl ProductoRepo {
 
         if let Some(r) = row {
             let gen_rows = sqlx::query(
-                "SELECT rg.id_genero, g.genero_literario FROM revista_genero rg JOIN genero g ON rg.id_genero = g.id_genero WHERE rg.codigo_ean = ?"
+                "SELECT pg.id_genero, g.genero_literario FROM productos_has_genero pg JOIN genero g ON pg.id_genero = g.id_genero WHERE pg.codigo_ean = ?"
             )
             .bind(codigo_ean)
             .fetch_all(pool)
