@@ -16,6 +16,7 @@ fn mapear(r: &sqlx::mysql::MySqlRow) -> Mueble {
         codigo_mueble: r.get("codigo_mueble"),
         nombre_mueble: r.get("nombre_mueble"),
         capacidad: r.get("capacidad"),
+        capacidad_actual: row_get_i32(r, "capacidad_actual"),
         descripcion: r.get("descripcion"),
         genero_literario: r.get("genero_literario"),
     }
@@ -25,7 +26,9 @@ impl MuebleRepo {
     pub async fn listar_muebles(pool: &DbPool) -> Result<Vec<Mueble>, AppError> {
         let rows = sqlx::query(
             "SELECT m.id_mueble, m.id_genero, m.id_ubicacion, m.codigo_mueble, \
-             m.nombre_mueble, m.capacidad, m.descripcion, g.genero_literario \
+             m.nombre_mueble, m.capacidad, \
+             COALESCE((SELECT SUM(e.cantidad) FROM existencias e WHERE e.id_mueble = m.id_mueble), 0) AS capacidad_actual, \
+             m.descripcion, g.genero_literario \
              FROM mueble m JOIN genero g ON g.id_genero = m.id_genero ORDER BY m.id_Mueble ASC",
         )
             .fetch_all(pool)
@@ -37,7 +40,9 @@ impl MuebleRepo {
     async fn buscar_mueble(pool: &DbPool, id: i32) -> Result<Option<Mueble>, AppError> {
         let row = sqlx::query(
             "SELECT m.id_mueble, m.id_genero, m.id_ubicacion, m.codigo_mueble, \
-             m.nombre_mueble, m.capacidad, m.descripcion, g.genero_literario \
+             m.nombre_mueble, m.capacidad, \
+             COALESCE((SELECT SUM(e.cantidad) FROM existencias e WHERE e.id_mueble = m.id_mueble), 0) AS capacidad_actual, \
+             m.descripcion, g.genero_literario \
              FROM mueble m JOIN genero g ON g.id_genero = m.id_genero WHERE m.id_Mueble = ?",
         )
             .bind(id)

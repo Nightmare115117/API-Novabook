@@ -9,6 +9,7 @@ pub struct Mueble {
     pub codigo_mueble: String,
     pub nombre_mueble: String,
     pub capacidad: Option<i32>,
+    pub capacidad_actual: i32,
     pub descripcion: Option<String>,
     pub genero_literario: String,
 }
