@@ -11,7 +11,16 @@ pub struct GeneroRepo;
 impl GeneroRepo {
     pub async fn listar_generos(pool: &DbPool) -> Result<Vec<Genero>, AppError> {
         let rows = sqlx::query(
-            "SELECT id_genero, genero_literario FROM genero ORDER BY genero_literario ASC",
+            "SELECT g.id_genero, g.genero_literario, \
+             (SELECT COUNT(DISTINCT pg.codigo_ean) \
+              FROM productos_has_genero pg \
+              JOIN libros l ON l.codigo_ean = pg.codigo_ean \
+              WHERE pg.id_genero = g.id_genero) AS total_libros, \
+             (SELECT COUNT(DISTINCT pg.codigo_ean) \
+              FROM productos_has_genero pg \
+              JOIN revistas r ON r.codigo_ean = pg.codigo_ean \
+              WHERE pg.id_genero = g.id_genero) AS total_revistas \
+             FROM genero g ORDER BY g.genero_literario ASC",
         )
         .fetch_all(pool)
         .await
@@ -22,6 +31,8 @@ impl GeneroRepo {
             .map(|r| Genero {
                 id_genero: row_get_i32(&r, "id_genero"),
                 genero_literario: r.get("genero_literario"),
+                total_libros: row_get_i64(&r, "total_libros"),
+                total_revistas: row_get_i64(&r, "total_revistas"),
             })
             .collect())
     }
@@ -36,6 +47,8 @@ impl GeneroRepo {
         Ok(Genero {
             id_genero: res.last_insert_id() as i32,
             genero_literario: req.genero_literario.clone(),
+            total_libros: 0,
+            total_revistas: 0,
         })
     }
 
@@ -58,6 +71,8 @@ impl GeneroRepo {
         Ok(Genero {
             id_genero: id,
             genero_literario: req.genero_literario.clone(),
+            total_libros: 0,
+            total_revistas: 0,
         })
     }
 
