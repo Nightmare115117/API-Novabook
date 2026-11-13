@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    db::{DbPool, log_bitacora},
+    db::{DbPool, log_bitacora, log_bitacora_tipo},
     error::AppError,
     middleware::generate_jwt,
     usuarios::{
@@ -76,13 +76,20 @@ impl UsuarioService {
             config.jwt_expiration_hours,
         )?;
 
-        let _ = log_bitacora(
+        if let Err(error) = log_bitacora_tipo(
             pool,
             usuario.id_usuarios,
+            2,
             "INICIO DE SESIÓN",
             &format!("Inicio de sesión exitoso con rol: {}", rol_enum.as_str()),
         )
-        .await;
+        .await
+        {
+            eprintln!(
+                "[AUDIT ERROR] No se pudo registrar inicio de sesión para usuario {}: {error}",
+                usuario.id_usuarios
+            );
+        }
 
         let dto: UsuarioDto = usuario.into();
 
