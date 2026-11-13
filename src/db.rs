@@ -28,12 +28,24 @@ pub async fn log_bitacora(
     accion: &str,
     detalle: &str,
 ) -> Result<(), AppError> {
+    log_bitacora_tipo(pool, id_usuarios, 1, accion, detalle).await
+}
+
+pub async fn log_bitacora_tipo(
+    pool: &DbPool,
+    id_usuarios: i64,
+    id_tipo_evento: i32,
+    accion: &str,
+    detalle: &str,
+) -> Result<(), AppError> {
     sqlx::query(
-        "INSERT INTO bitacora (fecha_hora, accion, detalle, id_usuarios) VALUES (NOW(), ?, ?, ?)",
+        "INSERT INTO bitacora (fecha_hora, accion, detalle, id_usuarios, id_tipo_evento) \
+         VALUES (NOW(), ?, ?, ?, ?)",
     )
     .bind(accion)
     .bind(detalle)
     .bind(id_usuarios)
+    .bind(id_tipo_evento)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
