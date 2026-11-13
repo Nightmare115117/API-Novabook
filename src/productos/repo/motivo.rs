@@ -10,23 +10,26 @@ pub struct MotivoRepo;
 
 impl MotivoRepo {
     pub async fn listar_motivos(pool: &DbPool) -> Result<Vec<Motivo>, AppError> {
-        let rows = sqlx::query("SELECT id_motivo, motivo FROM motivos ORDER BY motivo ASC")
-            .fetch_all(pool)
-            .await
-            .map_err(AppError::Database)?;
+        let rows =
+            sqlx::query("SELECT id_motivo, motivo, descripcion FROM motivos ORDER BY motivo ASC")
+                .fetch_all(pool)
+                .await
+                .map_err(AppError::Database)?;
 
         Ok(rows
             .into_iter()
             .map(|r| Motivo {
                 id_motivo: row_get_i32(&r, "id_motivo"),
                 motivo: r.get("motivo"),
+                descripcion: r.get("descripcion"),
             })
             .collect())
     }
 
     pub async fn crear_motivo(pool: &DbPool, req: &CrearMotivoRequest) -> Result<Motivo, AppError> {
-        let res = sqlx::query("INSERT INTO motivos (motivo) VALUES (?)")
+        let res = sqlx::query("INSERT INTO motivos (motivo, descripcion) VALUES (?, ?)")
             .bind(&req.motivo)
+            .bind(&req.descripcion)
             .execute(pool)
             .await
             .map_err(AppError::Database)?;
@@ -34,6 +37,7 @@ impl MotivoRepo {
         Ok(Motivo {
             id_motivo: res.last_insert_id() as i32,
             motivo: req.motivo.clone(),
+            descripcion: req.descripcion.clone(),
         })
     }
 
@@ -50,9 +54,16 @@ impl MotivoRepo {
             .map_err(AppError::Database)?;
 
         if res.rows_affected() == 0 {
-            return Err(AppError::NotFound(format!("Motivo con ID {} no encontrado", id)));
+            return Err(AppError::NotFound(format!(
+                "Motivo con ID {} no encontrado",
+                id
+            )));
         }
-        Ok(Motivo { id_motivo: id, motivo: req.motivo.clone() })
+        Ok(Motivo {
+            id_motivo: id,
+            motivo: req.motivo.clone(),
+            descripcion: req.descripcion.clone(),
+        })
     }
 
     // Ninguna tabla referencia motivos por FK (devolucion/movimientos guardan texto), se borra directo.
@@ -64,7 +75,10 @@ impl MotivoRepo {
             .map_err(AppError::Database)?;
 
         if res.rows_affected() == 0 {
-            return Err(AppError::NotFound(format!("Motivo con ID {} no encontrado", id)));
+            return Err(AppError::NotFound(format!(
+                "Motivo con ID {} no encontrado",
+                id
+            )));
         }
         Ok(())
     }

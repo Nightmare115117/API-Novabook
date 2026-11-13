@@ -11,7 +11,7 @@ impl UsuarioRepo {
     pub async fn buscar_por_id(pool: &DbPool, id: i64) -> Result<Option<Usuario>, AppError> {
         let row = sqlx::query(
             r#"
-            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estatus
+            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estado
             FROM usuarios
             WHERE id_usuarios = ?
             "#,
@@ -36,7 +36,7 @@ impl UsuarioRepo {
     pub async fn listar_todos(pool: &DbPool) -> Result<Vec<Usuario>, AppError> {
         let rows = sqlx::query(
             r#"
-            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estatus
+            SELECT id_usuarios, id_roles, nombre, apellido_paterno, apellido_materno, telefono, contrasena, estado
             FROM usuarios
             ORDER BY id_usuarios ASC
             "#,
@@ -55,7 +55,7 @@ impl UsuarioRepo {
                 apellido_materno: r.get("apellido_materno"),
                 telefono: row_get_opt_i64(&r, "telefono"),
                 contrasena: r.get("contrasena"),
-                estatus: r.get("estatus"),
+                estatus: r.get("estado"),
             })
             .collect();
 
@@ -146,16 +146,17 @@ impl UsuarioRepo {
     }
 
     pub async fn eliminar(pool: &DbPool, id: i64) -> Result<bool, AppError> {
-        let res = sqlx::query(r#"
+        let res = sqlx::query(
+            r#"
                 UPDATE usuarios
-                SET estatus = FALSE
+                SET estado = FALSE
                 WHERE id_usuarios = ?
-                "#
-            )
-            .bind(id)
-            .execute(pool)
-            .await
-            .map_err(AppError::Database)?;
+                "#,
+        )
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
 
         Ok(res.rows_affected() > 0)
     }
