@@ -12,6 +12,63 @@ use crate::{
     },
 };
 
+const MAX_PASSWORD_LENGTH: usize = 16;
+const MAX_NAME_LENGTH: usize = 50;
+const MAX_SURNAME_LENGTH: usize = 30;
+
+fn validate_password(password: &str, required: bool) -> Result<(), AppError> {
+    if required && password.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "La contraseña no puede estar vacía".to_string(),
+        ));
+    }
+    if password.chars().count() > MAX_PASSWORD_LENGTH {
+        return Err(AppError::BadRequest(
+            "La contraseña no puede exceder 16 caracteres".to_string(),
+        ));
+    }
+    if !password.is_empty() && password.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "La contraseña no puede contener solo espacios".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_required_text(value: &str, field: &str, max_length: usize) -> Result<(), AppError> {
+    if value.trim().is_empty() {
+        return Err(AppError::BadRequest(format!("{field} es obligatorio")));
+    }
+    if value.chars().count() > max_length {
+        return Err(AppError::BadRequest(format!(
+            "{field} no puede exceder {max_length} caracteres"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_optional_text(
+    value: Option<&str>,
+    field: &str,
+    max_length: usize,
+) -> Result<(), AppError> {
+    if value.is_some_and(|text| text.chars().count() > max_length) {
+        return Err(AppError::BadRequest(format!(
+            "{field} no puede exceder {max_length} caracteres"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_phone(phone: Option<i64>) -> Result<(), AppError> {
+    if phone.is_some_and(|value| !(1_000_000_000..=9_999_999_999).contains(&value)) {
+        return Err(AppError::BadRequest(
+            "El teléfono debe contener exactamente 10 dígitos".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 pub struct UsuarioService;
 
 impl UsuarioService {
@@ -24,11 +81,7 @@ impl UsuarioService {
         if req.id_usuario <= 0 {
             return Err(AppError::BadRequest("ID de usuario inválido".to_string()));
         }
-        if req.contrasena.trim().is_empty() {
-            return Err(AppError::BadRequest(
-                "La contraseña no puede estar vacía".to_string(),
-            ));
-        }
+        validate_password(&req.contrasena, true)?;
 
         let usuario = UsuarioRepo::buscar_por_id(pool, req.id_usuario)
             .await?
@@ -132,15 +185,25 @@ impl UsuarioService {
                 "ID de usuario debe ser mayor a 0".to_string(),
             ));
         }
-        if req.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
-        }
+        validate_required_text(&req.nombre, "El nombre", MAX_NAME_LENGTH)?;
+        validate_optional_text(
+            req.apellido_paterno.as_deref(),
+            "El apellido paterno",
+            MAX_SURNAME_LENGTH,
+        )?;
+        validate_optional_text(
+            req.apellido_materno.as_deref(),
+            "El apellido materno",
+            MAX_SURNAME_LENGTH,
+        )?;
+        validate_phone(req.telefono)?;
         if RolEnum::from_id(req.id_roles).is_none() {
             return Err(AppError::BadRequest(format!(
                 "Rol inválido: {}",
                 req.id_roles
             )));
         }
+        validate_password(&req.contrasena, true)?;
 
         if UsuarioRepo::existe(pool, req.id_usuarios).await? {
             return Err(AppError::Conflict(format!(
@@ -189,7 +252,28 @@ impl UsuarioService {
                 return Err(AppError::BadRequest(format!("Rol inválido: {}", r)));
             }
 
+        if let Some(nombre) = req.nombre.as_deref() {
+            validate_required_text(nombre, "El nombre", MAX_NAME_LENGTH)?;
+        }
+        validate_optional_text(
+            req.apellido_paterno.as_deref(),
+            "El apellido paterno",
+            MAX_SURNAME_LENGTH,
+        )?;
+        validate_optional_text(
+            req.apellido_materno.as_deref(),
+            "El apellido materno",
+            MAX_SURNAME_LENGTH,
+        )?;
+        validate_phone(req.telefono)?;
+
         let mut req = req;
+        if req.contrasena.as_deref() == Some("") {
+            req.contrasena = None;
+        }
+        if let Some(pass) = req.contrasena.as_deref() {
+            validate_password(pass, true)?;
+        }
         if let Some(ref pass) = req.contrasena
             && !pass.starts_with("$2b$") && !pass.starts_with("$2a$") {
                 req.contrasena = Some(bcrypt::hash(pass, 10).map_err(|e| {
@@ -231,5 +315,51 @@ impl UsuarioService {
         .await;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        validate_optional_text, validate_password, validate_phone, validate_required_text,
+    };
+
+    #[test]
+    fn password_accepts_maximum_length() {
+        assert!(validate_password("abcdefghijklmnop", true).is_ok());
+    }
+
+    #[test]
+    fn password_rejects_more_than_maximum_length() {
+        assert!(validate_password("abcdefghijklmnopq", true).is_err());
+    }
+
+    #[test]
+    fn required_password_rejects_blank_values() {
+        assert!(validate_password("", true).is_err());
+        assert!(validate_password("   ", true).is_err());
+    }
+
+    #[test]
+    fn optional_password_accepts_empty_value() {
+        assert!(validate_password("", false).is_ok());
+    }
+
+    #[test]
+    fn names_enforce_required_and_schema_length_limits() {
+        assert!(validate_required_text("Ana", "El nombre", 50).is_ok());
+        assert!(validate_required_text(" ", "El nombre", 50).is_err());
+        assert!(validate_required_text(&"a".repeat(51), "El nombre", 50).is_err());
+        assert!(validate_optional_text(Some(&"a".repeat(30)), "Apellido", 30).is_ok());
+        assert!(validate_optional_text(Some(&"a".repeat(31)), "Apellido", 30).is_err());
+        assert!(validate_optional_text(None, "Apellido", 30).is_ok());
+    }
+
+    #[test]
+    fn phone_must_have_exactly_ten_digits_when_provided() {
+        assert!(validate_phone(None).is_ok());
+        assert!(validate_phone(Some(8443509259)).is_ok());
+        assert!(validate_phone(Some(844350925)).is_err());
+        assert!(validate_phone(Some(10_000_000_000)).is_err());
     }
 }
